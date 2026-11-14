@@ -51,3 +51,22 @@ the request falls back to the DSPy LLM detector.
 Without Google OAuth set up yet, mint a dev token (`python -c "from app.auth import create_access_token as t; print(t(1))"`
 after inserting a user) and paste it via the side panel's console:
 `chrome.storage.local.set({applier_token: "<jwt>"})`, then reopen the panel.
+
+## Email (Resend)
+Set `RESEND_API_KEY` and `EMAIL_FROM` (domain verified in Resend). Without a key emails are logged and skipped.
+Transactional: welcome on first sign-in, and "free applications used up".
+
+## Product update emails
+Same design as blog2video / NotestackAI: a campaign is drip-sent in daily batches during its send hour.
+```bash
+cd backend
+python -m scripts.update_email create --subject "What's new" --body-file body.txt --filter all --batch-size 50
+python -m scripts.update_email preview 1     # audience size, nothing sent
+python -m scripts.update_email send-now 1    # run one batch now
+python -m scripts.update_email list | cancel <id>
+```
+- Filters: `all`, `active` (>=1 applied), `inactive` (0), `exhausted` (used all free applications).
+- A scheduler in the API process wakes every 10 min and runs a campaign's batch in `UPDATE_EMAIL_SEND_HOUR` (UTC) once per day.
+  Disable with `UPDATE_EMAIL_SCHEDULER=false` on extra workers.
+- Each recipient is claimed in `update_email_sends` before sending (unique per campaign+user), so nobody gets it twice.
+- Every email has a signed unsubscribe link plus `List-Unsubscribe` one-click headers. Set `PUBLIC_API_URL` to the public API origin.

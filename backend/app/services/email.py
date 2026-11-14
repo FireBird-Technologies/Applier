@@ -19,12 +19,16 @@ def _send_via_resend(params: dict) -> str | None:
     return result.get("id") if isinstance(result, dict) else getattr(result, "id", None)
 
 
-def send_email(to: str, subject: str, html: str, text: str) -> bool:
+def send_email(
+    to: str, subject: str, html: str, text: str, *, from_email: str = "", headers: dict | None = None
+) -> bool:
     """Send one email. Never raises: a failed email must not break the request that triggered it."""
     if not settings.RESEND_API_KEY:
         log.warning("RESEND_API_KEY not set; skipping email %r to %s", subject, to)
         return False
-    params: dict = {"from": settings.EMAIL_FROM, "to": [to], "subject": subject, "html": html, "text": text}
+    params: dict = {"from": from_email or settings.EMAIL_FROM, "to": [to], "subject": subject, "html": html, "text": text}
+    if headers:
+        params["headers"] = headers
     if settings.EMAIL_REPLY_TO:
         params["reply_to"] = settings.EMAIL_REPLY_TO
     try:
@@ -36,7 +40,7 @@ def send_email(to: str, subject: str, html: str, text: str) -> bool:
         return False
 
 
-def _layout(title: str, body_html: str) -> str:
+def _layout(title: str, body_html: str, footer: str = "You got this because you signed in to Applier.") -> str:
     # Black and white, system/Geist font stack, no images or gradients.
     return (
         '<div style="font-family:Geist,-apple-system,Segoe UI,Helvetica,Arial,sans-serif;'
@@ -45,7 +49,7 @@ def _layout(title: str, body_html: str) -> str:
         f'<h1 style="font-size:20px;font-weight:600;letter-spacing:-0.02em;margin:0 0 12px">{escape(title)}</h1>'
         f'<div style="font-size:14px;line-height:1.6;color:#333">{body_html}</div>'
         '<hr style="border:0;border-top:1px solid #e5e5e5;margin:32px 0 12px">'
-        '<div style="font-size:12px;color:#737373">You got this because you signed in to Applier.</div>'
+        f'<div style="font-size:12px;color:#737373">{footer}</div>'
         "</div>"
     )
 

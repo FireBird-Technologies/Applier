@@ -39,6 +39,12 @@ class Settings(BaseSettings):
     EMAIL_FROM: str = "Applier <noreply@example.com>"  # must be on a domain verified in Resend
     EMAIL_REPLY_TO: str = ""
 
+    # Product update emails (campaign broadcasts, drip-sent in daily batches)
+    UPDATE_EMAIL_SEND_HOUR: int = 9           # UTC hour a campaign's daily batch runs (campaign can override)
+    UPDATE_EMAIL_SCHEDULER: bool = True       # set false on extra workers / in tests
+    UPDATE_EMAIL_FROM: str = ""               # defaults to EMAIL_FROM
+    PUBLIC_API_URL: str = "http://localhost:8000"  # used to build unsubscribe links
+
     FREE_APPLICATIONS: int = 10
     PRICE_PER_APPLICATION_USD: float = 0.10
     MINIMUM_CHARGE_USD: float = 3.00
