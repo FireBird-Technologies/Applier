@@ -41,7 +41,7 @@ class Settings(BaseSettings):
 
     # Email (Resend). Without RESEND_API_KEY emails are logged and skipped.
     RESEND_API_KEY: str = ""
-    EMAIL_FROM: str = "Applier <noreply@example.com>"  # must be on a domain verified in Resend
+    EMAIL_FROM: str = "Applier <noreply@firebird-technologies.com>"  # must be on a domain verified in Resend
     EMAIL_REPLY_TO: str = ""
 
     # Product update emails (campaign broadcasts, drip-sent in daily batches)

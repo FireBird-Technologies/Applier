@@ -11,6 +11,10 @@ from app.routers import applications, auth, billing, sources, unsubscribe
 from app.services.updates import scheduler_loop
 
 logging.basicConfig(level=logging.INFO)
+if settings.RESEND_API_KEY and "example.com" in settings.EMAIL_FROM:
+    logging.getLogger(__name__).warning(
+        "EMAIL_FROM (%s) uses example.com, which Resend rejects. Set it to an address on a verified domain.", settings.EMAIL_FROM
+    )
 
 
 @asynccontextmanager

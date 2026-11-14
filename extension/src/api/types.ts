@@ -26,5 +26,6 @@ export interface Resume {
 export interface Application {
   id: number; job_url: string; job_title: string; company: string;
   status: "draft" | "applied"; version: number; resume: Resume; notice?: string;
+  can_undo?: boolean; last_edit?: string;
 }
 export type Format = "pdf" | "docx" | "md" | "txt";

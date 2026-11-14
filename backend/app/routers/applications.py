@@ -14,10 +14,11 @@ from app.models.application import Application, ApplicationEdit, ApplicationStat
 from app.models.source_resume import SourceResume
 from app.models.user import User
 from app.routers.sources import active_source
-from app.schemas import ApplicationOut, DetectIn, DetectOut, EditIn, GenerateIn, ResumeIn, TailoredResume
+from app.schemas import SECTIONS, ApplicationOut, DetectIn, DetectOut, EditIn, GenerateIn, ResumeIn, TailoredResume
 from app.services import render
 from app.services.render import describe_trim, fit_to_one_page
 from app.services.detect import detect
+from app.services.history import clean_resume, describe, history_text, record
 from app.services.textclean import clean_text
 from app.services.email import send_quota_used
 from app.services.usage import get_usage
@@ -31,28 +32,8 @@ def _out(a: Application) -> ApplicationOut:
         id=a.id, job_url=a.job_url, job_title=a.job_title, company=a.company, status=a.status,
         version=a.version, resume=TailoredResume.model_validate(a.resume),
         created_at=a.created_at, applied_at=a.applied_at,
-        can_undo=len(a.edits) > 1, last_edit=_describe(a.edits[-1]) if len(a.edits) > 1 else "",
+        can_undo=len(a.edits) > 1, last_edit=describe(a.edits[-1]) if len(a.edits) > 1 else "",
     )
-
-
-def _describe(e: ApplicationEdit) -> str:
-    return e.instruction if e.kind == "ai" else "your manual edits"
-
-
-def _record(a: Application, kind: str, instruction: str = "") -> None:
-    """Snapshot the resume as it is now. Resumes made before history existed get a baseline first."""
-    if not a.edits:
-        a.edits.append(ApplicationEdit(kind="generate", resume=a.resume))
-    a.edits.append(ApplicationEdit(kind=kind, instruction=instruction, resume=a.resume))
-
-
-def _history_text(a: Application) -> str:
-    """Earlier requests, oldest first, for the reviser. Undone edits are gone, so they are never re-applied."""
-    lines = []
-    for e in a.edits[1:][-20:]:
-        lines.append(f"- {e.instruction}" if e.kind == "ai" else "- (the user edited the text by hand)")
-    return "
-".join(lines)
 
 
 def _owned(db: Session, user: User, app_id: int) -> Application:
@@ -94,7 +75,8 @@ def generate(body: GenerateIn, user: User = Depends(get_current_user), db: Sessi
     if len(jd) < 100:
         raise HTTPException(400, "Not enough job description text on this page")
 
-    resume = fit_to_one_page(_llm_call(tailor_resume, source.text, body.job_title, body.company, jd))
+    resume = _llm_call(tailor_resume, source.text, body.job_title, body.company, jd)
+    resume = fit_to_one_page(resume.model_copy(update={"section_order": list(SECTIONS)}))  # the model never picks the layout
     a = Application(
         user_id=user.id, source_resume_id=source.id, job_url=body.url[:2048],
         job_title=body.job_title[:512], company=body.company[:512],
@@ -120,31 +102,13 @@ def get_application(app_id: int, user: User = Depends(get_current_user), db: Ses
     return _out(_owned(db, user, app_id))
 
 
-def _clean_resume(r: TailoredResume) -> TailoredResume:
-    """Trim whitespace and drop empty list items/entries from a hand-edited resume."""
-    def lines(xs): return [x.strip() for x in xs if x and x.strip()]
-    r = r.model_copy(deep=True)
-    r.name, r.headline, r.summary = r.name.strip(), r.headline.strip(), r.summary.strip()
-    r.contact, r.skills, r.certifications = lines(r.contact), lines(r.skills), lines(r.certifications)
-    for e in r.experience:
-        e.bullets = lines(e.bullets)
-    for p in r.projects:
-        p.bullets = lines(p.bullets)
-    for e in r.education:
-        e.details = lines(e.details)
-    r.experience = [e for e in r.experience if e.title.strip() or e.company.strip() or e.bullets]
-    r.projects = [p for p in r.projects if p.name.strip() or p.bullets]
-    r.education = [e for e in r.education if e.school.strip() or e.degree.strip()]
-    return r
-
-
 @router.put("/applications/{app_id}", response_model=ApplicationOut)
 def save_manual_edits(app_id: int, body: ResumeIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Save a hand-edited resume. It is still kept to one page; anything removed is reported in `notice`."""
     a = _owned(db, user, app_id)
     if len(body.resume.model_dump_json()) > 40_000:
         raise HTTPException(413, "Resume is too long")
-    edited = _clean_resume(body.resume)
+    edited = clean_resume(body.resume)
     if not edited.name:
         raise HTTPException(400, "Resume needs a name")
     fitted = fit_to_one_page(edited)
@@ -152,7 +116,7 @@ def save_manual_edits(app_id: int, body: ResumeIn, user: User = Depends(get_curr
         a.edits.append(ApplicationEdit(kind="generate", resume=a.resume))  # baseline before the first change
     a.resume = fitted.model_dump()
     a.version += 1
-    _record(a, "manual")
+    record(a, ApplicationEdit, "manual")
     db.commit()
     out = _out(a)
     out.notice = describe_trim(edited, fitted)
@@ -165,13 +129,14 @@ def edit(app_id: int, body: EditIn, user: User = Depends(get_current_user), db: 
     source = db.get(SourceResume, a.source_resume_id) if a.source_resume_id else None
     updated = _llm_call(
         revise_resume, source.text if source else "", TailoredResume.model_validate(a.resume),
-        a.job_description, body.instruction, _history_text(a),
+        a.job_description, body.instruction, history_text(a),
     )
     if not a.edits:
         a.edits.append(ApplicationEdit(kind="generate", resume=a.resume))  # baseline before the first change
-    a.resume = fit_to_one_page(updated).model_dump()
+    layout = TailoredResume.model_validate(a.resume).section_order  # keep the user's sections and their order
+    a.resume = fit_to_one_page(updated.model_copy(update={"section_order": layout})).model_dump()
     a.version += 1
-    _record(a, "ai", body.instruction.strip())
+    record(a, ApplicationEdit, "ai", body.instruction.strip())
     db.commit()
     return _out(a)
 

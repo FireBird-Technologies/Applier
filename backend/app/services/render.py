@@ -36,29 +36,34 @@ def _dates(a: str, b: str) -> str:
     return " - ".join(x for x in (a, b) if x)
 
 
+HEADINGS = {"summary": "Summary", "skills": "Skills", "experience": "Experience", "projects": "Projects",
+            "education": "Education", "certifications": "Certifications"}
+
+
+def _entries(r: TailoredResume, key: str) -> list:
+    """Entries of one section; an entry is a plain str or (title, sub_line, bullets). Empty list = nothing to show."""
+    if key == "summary":
+        return [r.summary] if r.summary else []
+    if key == "skills":
+        return [", ".join(r.skills)] if r.skills else []
+    if key == "experience":
+        return [(" - ".join(x for x in (e.title, e.company) if x),
+                 " | ".join(x for x in (e.location, _dates(e.start, e.end)) if x), e.bullets) for e in r.experience]
+    if key == "projects":
+        return [(p.name, "", p.bullets) for p in r.projects]
+    if key == "education":
+        return [(" - ".join(x for x in (e.degree, e.school) if x), e.dates, e.details) for e in r.education]
+    if key == "certifications":
+        return [(c, "", []) for c in r.certifications]
+    return []
+
+
 def _sections(r: TailoredResume):
-    """Yield (heading, entries); an entry is a plain str or (title, sub_line, bullets)."""
-    if r.summary:
-        yield "Summary", [r.summary]
-    if r.skills:
-        yield "Skills", [", ".join(r.skills)]
-    if r.experience:
-        yield "Experience", [
-            (
-                " - ".join(x for x in (e.title, e.company) if x),
-                " | ".join(x for x in (e.location, _dates(e.start, e.end)) if x),
-                e.bullets,
-            )
-            for e in r.experience
-        ]
-    if r.projects:
-        yield "Projects", [(p.name, "", p.bullets) for p in r.projects]
-    if r.education:
-        yield "Education", [
-            (" - ".join(x for x in (e.degree, e.school) if x), e.dates, e.details) for e in r.education
-        ]
-    if r.certifications:
-        yield "Certifications", [(c, "", []) for c in r.certifications]
+    """Yield (heading, entries) for the visible, non-empty sections, in the user's order."""
+    for key in r.section_order:
+        entries = _entries(r, key)
+        if entries:
+            yield HEADINGS[key], entries
 
 
 # ---------------------------------------------------------------- md / txt
@@ -185,32 +190,35 @@ def _first_sentences(text: str, n: int) -> str:
 
 
 def _trim_one_step(r: TailoredResume) -> bool:
-    """Remove the least valuable piece of content. Returns False when nothing is left to remove."""
-    if len(r.summary) > 260:  # keep a summary to ~2 sentences before touching real content
+    """Remove the least valuable piece of VISIBLE content. Returns False when nothing is left to remove.
+    Hidden sections are never touched: removing them would not help the layout and would destroy content."""
+    shown = set(r.section_order)
+    if "summary" in shown and len(r.summary) > 260:  # keep a summary to ~2 sentences before touching real content
         short = _first_sentences(r.summary, 2)
         if short != r.summary:
             r.summary = short
             return True
-    if r.certifications:
+    if "certifications" in shown and r.certifications:
         r.certifications.pop()
         return True
-    if r.projects:
+    if "projects" in shown and r.projects:
         r.projects.pop()
         return True
-    if any(e.details for e in r.education):
+    if "education" in shown and any(e.details for e in r.education):
         for e in r.education:
             e.details = []
         return True
-    # Oldest experience loses bullets first, but every role keeps 3, then 2, then 1.
-    for floor in (3, 2, 1):
-        for e in reversed(r.experience):
-            if len(e.bullets) > floor:
-                e.bullets.pop()
-                return True
-    if len(r.skills) > 8:
+    if "experience" in shown:
+        # Oldest experience loses bullets first, but every role keeps 3, then 2, then 1.
+        for floor in (3, 2, 1):
+            for e in reversed(r.experience):
+                if len(e.bullets) > floor:
+                    e.bullets.pop()
+                    return True
+    if "skills" in shown and len(r.skills) > 8:
         r.skills.pop()
         return True
-    if len(r.experience) > 1:
+    if "experience" in shown and len(r.experience) > 1:
         r.experience.pop()  # oldest role
         return True
     return False

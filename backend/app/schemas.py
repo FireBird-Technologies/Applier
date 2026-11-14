@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 # ---- Structured resume (the single source for pdf/docx/md/txt rendering) ----
@@ -25,6 +25,9 @@ class Project(BaseModel):
     bullets: list[str] = Field(default_factory=list)
 
 
+SECTIONS = ("summary", "skills", "experience", "projects", "education", "certifications")
+
+
 class TailoredResume(BaseModel):
     name: str = ""
     headline: str = ""
@@ -35,6 +38,18 @@ class TailoredResume(BaseModel):
     projects: list[Project] = Field(default_factory=list)
     education: list[Education] = Field(default_factory=list)
     certifications: list[str] = Field(default_factory=list)
+    # The user's layout: sections shown, top to bottom. A section not listed here is hidden everywhere
+    # (preview, PDF, DOCX, text) but its content is kept so it can be added back.
+    section_order: list[str] = Field(default_factory=lambda: list(SECTIONS))
+
+    @field_validator("section_order")
+    @classmethod
+    def _known_unique(cls, v: list[str]) -> list[str]:
+        out: list[str] = []
+        for key in v:
+            if key in SECTIONS and key not in out:
+                out.append(key)
+        return out
 
 
 # ---- API ----
@@ -86,9 +101,20 @@ class SourceResumeOut(BaseModel):
     created_at: datetime
 
 
-class SourceContentOut(BaseModel):
+class _UnusedSourceContentOut(BaseModel):
     filename: str
     text: str
+
+
+class SourceDocOut(BaseModel):
+    """The source resume as an editable document (same shape the editor uses for tailored resumes)."""
+    id: int
+    filename: str
+    resume: "TailoredResume"
+    version: int
+    can_undo: bool = False
+    last_edit: str = ""
+    notice: str = ""
 
 
 class SourceTextIn(BaseModel):

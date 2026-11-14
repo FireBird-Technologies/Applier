@@ -19,6 +19,16 @@ class DetectJobPage(dspy.Signature):
     reason: str = dspy.OutputField(desc="one short sentence")
 
 
+class ParseResume(dspy.Signature):
+    """Convert resume text into structured sections. This is EXTRACTION ONLY: copy the candidate's own wording.
+    Do not summarize, improve, shorten, reorder jobs, or add anything that is not in the text. Keep bullet points
+    verbatim and dates as written. Put email, phone, location and links in contact. Use an empty summary if the
+    resume has none. Put anything that fits no section (for example awards) into certifications."""
+
+    resume_text: str = dspy.InputField()
+    resume: TailoredResume = dspy.OutputField()
+
+
 class TailorResume(dspy.Signature):
     """Rewrite the candidate's resume so it is tailored to the job description.
 

@@ -11,15 +11,16 @@ const Label = ({ children }: { children: string }) => (
   <div className="mb-3 text-[11px] font-medium uppercase tracking-[0.14em] text-gray-400">{children}</div>
 );
 
-/** Full-tab editor: edit on the left; job actions and the page preview on the right. */
+/** Full-tab editor with two tabs at the top: Edit and Preview. Each takes the whole window. */
 export function EditorPage() {
   const id = Number(new URLSearchParams(location.search).get("id"));
   const [app, setApp] = useState<Application | null>(null);
   const [draft, setDraft] = useState<Resume | null>(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [busy, setBusy] = useState<"" | "save" | "edit" | Format>("");
+  const [busy, setBusy] = useState<"" | "save" | "edit" | "undo" | Format>("");
   const [instruction, setInstruction] = useState("");
+  const [tab, setTab] = useState<"edit" | "preview">("edit");
 
   useEffect(() => {
     if (!id) { setError("No resume selected."); return; }
@@ -59,6 +60,11 @@ export function EditorPage() {
     setInstruction("");
     await announce();
   });
+  // Unsaved typing is reverted first (like a normal undo); otherwise the last saved edit is stepped back.
+  const undo = () => {
+    if (dirty && app) { setDraft(app.resume); setMessage("Reverted unsaved changes"); return; }
+    return run("undo", "Undone", async () => { adopt(await api.undo(id)); await announce(); });
+  };
   const download = (f: Format) => run(f, "Downloaded", async () => {
     await persist();
     await api.download(id, f);
@@ -82,41 +88,56 @@ export function EditorPage() {
 
   return (
     <div className="min-h-screen text-[15px]">
-      <header className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-gray-200 bg-white px-8 py-4">
-        <div className="flex min-w-0 items-center gap-5">
-          <Logo size={20} />
-          <span className="truncate text-[16px] font-medium tracking-tight">{title}</span>
-          <span className={`shrink-0 rounded-full border border-black px-2.5 py-0.5 text-[11px] font-medium ${applied ? "bg-black text-white" : ""}`}>
-            {applied ? "Applied" : "Draft"}
-          </span>
+      <header className="sticky top-0 z-10 border-b border-gray-200 bg-white">
+        <div className="flex items-center justify-between gap-4 px-8 py-4">
+          <div className="flex min-w-0 items-center gap-5">
+            <Logo size={20} />
+            <span className="truncate text-[16px] font-medium tracking-tight">{title}</span>
+            <span className={`shrink-0 rounded-full border border-gray-200 px-2.5 py-0.5 text-[11px] font-medium ${applied ? "bg-black text-white" : ""}`}>
+              {applied ? "Applied" : "Draft"}
+            </span>
+          </div>
+          <div className="flex shrink-0 items-center gap-6 text-[14px]">
+            <span className="text-gray-400" role="status">{dirty ? "Unsaved changes" : message}</span>
+            <button className="text-gray-500 hover:text-black disabled:text-gray-300 disabled:hover:text-gray-300"
+              disabled={(!dirty && !app.can_undo) || !!busy} onClick={undo}
+              title={dirty ? "Discard unsaved changes" : app.can_undo ? `Undo: ${app.last_edit}` : "Nothing to undo"}>
+              {busy === "undo" ? "Undoing..." : "Undo"}
+            </button>
+            <button className="font-medium disabled:text-gray-300" disabled={!dirty || !!busy} onClick={save}>{busy === "save" ? "Saving..." : "Save"}</button>
+            <button className="text-gray-500 hover:text-black" onClick={() => window.close()}>Close</button>
+          </div>
         </div>
-        <div className="flex shrink-0 items-center gap-6 text-[14px]">
-          <span className="text-gray-400" role="status">{dirty ? "Unsaved changes" : message}</span>
-          <button className="font-medium disabled:text-gray-300" disabled={!dirty || !!busy} onClick={save}>{busy === "save" ? "Saving..." : "Save"}</button>
-          <button className="text-gray-500 hover:text-black" onClick={() => window.close()}>Close</button>
-        </div>
+        <nav className="flex gap-1 px-8 pb-3" aria-label="Editor view" role="tablist">
+          {(["edit", "preview"] as const).map((t) => (
+            <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
+              className={`rounded-md px-4 py-1.5 text-[14px] capitalize ${tab === t ? "bg-gray-100 font-medium text-black" : "text-gray-500 hover:text-black"}`}>
+              {t}
+            </button>
+          ))}
+        </nav>
       </header>
 
       {busy === "edit" ? (
         <TailoringLoader title={app.job_title} company={app.company} steps={EDIT_STEPS} verb="Editing" hint="Usually just a few seconds. Keep this tab open." />
-      ) : (
-      <main className="mx-auto grid max-w-[1400px] gap-16 px-8 py-12 lg:grid-cols-[1.05fr_1fr]">
-        {/* key remounts the form with the saved (possibly trimmed) text after each save or AI edit */}
-        <ResumeForm key={app.version} value={draft} onChange={setDraft} />
-
-        <div className="space-y-12 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:self-start lg:overflow-y-auto lg:pr-2">
-          <section>
-            <Label>Ask for a change</Label>
-            <div className="flex gap-3">
-              <input className="field py-3.5 text-[15px]" value={instruction} placeholder="e.g. Make the summary shorter" disabled={!!busy}
+      ) : tab === "edit" ? (
+        <>
+          {/* The ask bar spans the whole window */}
+          <section className="border-b border-gray-200 bg-white px-8 py-6">
+            <div className="flex w-full gap-3">
+              <input className="field flex-1 py-4 text-[16px]" value={instruction} placeholder="Ask for a change, e.g. make the summary shorter" disabled={!!busy}
                 onChange={(e) => setInstruction(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && instruction.trim().length > 2 && ask()} />
-              <button className="btn-ghost shrink-0 px-6 py-3.5 text-[15px]" disabled={!!busy || instruction.trim().length < 3} onClick={ask}>
-                Apply
-              </button>
+              <button className="btn-primary shrink-0 px-8 py-4 text-[15px]" disabled={!!busy || instruction.trim().length < 3} onClick={ask}>Apply</button>
             </div>
           </section>
-
+          {/* key remounts the form with the saved (possibly trimmed) text after each save, AI edit or undo */}
+          <main className="mx-auto max-w-3xl px-8 py-12">
+            <ResumeForm key={app.version} value={draft} onChange={setDraft} />
+          </main>
+        </>
+      ) : (
+        <main className="mx-auto max-w-3xl space-y-10 px-8 py-12">
           <section>
             <Label>Download</Label>
             <div className="grid grid-cols-4 gap-3">
@@ -130,14 +151,11 @@ export function EditorPage() {
               {applied ? "Counted as applied. More downloads and edits are free." : "Downloading marks this job as applied and uses 1 credit."}
             </p>
           </section>
-
           <section>
-            <Label>Preview</Label>
             <ResumePreview r={draft} full />
             <p className="mt-3 text-[13px] text-gray-400">Kept to one page. If an edit makes it too long, the least important items are trimmed when you save.</p>
           </section>
-        </div>
-      </main>
+        </main>
       )}
     </div>
   );

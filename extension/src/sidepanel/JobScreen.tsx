@@ -24,7 +24,7 @@ export function JobScreen({ usage, onUsage, onBuy }: Props) {
   const [company, setCompany] = useState("");
   const [jd, setJd] = useState(""); // editable job description; prefilled from the page
   const [app, setApp] = useState<Application | null>(null);
-  const [busy, setBusy] = useState<"" | "generate" | "edit" | Format>("");
+  const [busy, setBusy] = useState<"" | "generate" | "edit" | "undo" | Format>("");
   const [instruction, setInstruction] = useState("");
   const [error, setError] = useState("");
   const scanId = useRef(0);
@@ -104,6 +104,7 @@ export function JobScreen({ usage, onUsage, onBuy }: Props) {
 
   const generate = () => run("generate", async () => setApp(await api.generate({ ...page!, text: jd }, title, company)));
   const edit = () => run("edit", async () => { setApp(await api.edit(app!.id, instruction)); setInstruction(""); });
+  const undo = () => run("undo", async () => setApp(await api.undo(app!.id)));
   const download = (f: Format) => run(f, async () => {
     await api.download(app!.id, f);
     setApp({ ...app!, status: "applied" });
@@ -211,7 +212,14 @@ export function JobScreen({ usage, onUsage, onBuy }: Props) {
           </div>
 
           <div>
-            <label className="label">Suggest an edit</label>
+            <div className="flex items-baseline justify-between">
+              <label className="label">Suggest an edit</label>
+              <button className="mb-1 text-[12px] text-gray-500 hover:text-black disabled:text-gray-300 disabled:hover:text-gray-300"
+                disabled={!app.can_undo || !!busy} onClick={undo}
+                title={app.can_undo ? `Undo: ${app.last_edit}` : "Nothing to undo"}>
+                {busy === "undo" ? "Undoing..." : "Undo"}
+              </button>
+            </div>
             <div className="flex gap-2">
               <input className="field" value={instruction} placeholder="e.g. Shorten the summary" disabled={!!busy}
                 onChange={(e) => setInstruction(e.target.value)} onKeyDown={(e) => e.key === "Enter" && instruction.trim().length > 2 && edit()} />

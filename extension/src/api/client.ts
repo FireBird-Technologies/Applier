@@ -61,6 +61,8 @@ ${p.text.slice(-2500)}` : p.text }),
   /** Save hand edits. The server keeps the resume to one page and reports anything it removed in `notice`. */
   saveResume: (id: number, resume: Resume) =>
     json<Application>(`/api/applications/${id}`, { method: "PUT", body: JSON.stringify({ resume }) }),
+  /** Step back one edit (AI or manual). The server forgets the undone request. */
+  undo: (id: number) => post<Application>(`/api/applications/${id}/undo`, {}),
   createCheckout: (credits: number) =>
     post<{ url: string; credits: number; amount_cents: number }>("/api/billing/checkout", { credits }),
   edit: (id: number, instruction: string) => post<Application>(`/api/applications/${id}/edit`, { instruction }),

@@ -2,7 +2,7 @@ import dspy
 
 from app.config import settings
 from app.dspy_modules.lm import get_detect_lm, get_lm
-from app.dspy_modules.signatures import DetectJobPage, ReviseResume, TailorResume
+from app.dspy_modules.signatures import DetectJobPage, ParseResume, ReviseResume, TailorResume
 from app.schemas import DetectOut, TailoredResume
 
 
@@ -19,6 +19,12 @@ def detect_job_page(url: str, title: str, text: str, signals: str = "") -> Detec
         reason=(out.reason or "").strip(),
         method="llm",
     )
+
+
+def parse_resume(text: str) -> TailoredResume:
+    with dspy.context(lm=get_lm()):
+        out = dspy.Predict(ParseResume)(resume_text=text[: settings.MAX_SOURCE_CHARS])
+    return out.resume
 
 
 def tailor_resume(source: str, job_title: str, company: str, jd: str) -> TailoredResume:
