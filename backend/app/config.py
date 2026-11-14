@@ -50,7 +50,10 @@ class Settings(BaseSettings):
     UPDATE_EMAIL_SEND_HOUR: int = 9           # UTC hour a campaign's daily batch runs (campaign can override)
     UPDATE_EMAIL_SCHEDULER: bool = True       # set false on extra workers / in tests
     UPDATE_EMAIL_FROM: str = ""               # defaults to EMAIL_FROM
-    PUBLIC_API_URL: str = "http://localhost:8000"  # used to build unsubscribe links
+    PUBLIC_API_URL: str = "http://localhost:8000"  # the API's own public address: unsubscribe links, Stripe fallback
+    # The marketing website. When set, Stripe sends customers back to <SITE_URL>/billing/success (that page asks the API to
+    # confirm the payment). When empty, the API serves a plain return page itself.
+    SITE_URL: str = ""
 
     # Stripe (credit purchases). Without STRIPE_SECRET_KEY the Buy credits endpoints return 503.
     STRIPE_SECRET_KEY: str = ""

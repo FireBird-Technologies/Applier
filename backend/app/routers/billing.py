@@ -59,6 +59,22 @@ async def webhook(request: Request, db: Session = Depends(get_db)):
     return {"received": True}
 
 
+@router.get("/api/billing/confirm")
+def confirm(session_id: str = Query(..., pattern=r"^cs_[A-Za-z0-9_]{6,200}$"), db: Session = Depends(get_db)):
+    """For the website's return page: confirm a Checkout Session with Stripe and add the credits. Idempotent, and
+    Stripe's webhook adds them too, so it is safe to call repeatedly."""
+    try:
+        session = billing.retrieve_session(session_id)
+    except billing.PaymentsNotConfigured:
+        raise HTTPException(503, "Payments are not available")
+    except Exception:
+        log.exception("Could not retrieve checkout session")
+        raise HTTPException(502, "Could not confirm the payment yet")
+    added = billing.apply_checkout_session(db, session)
+    paid = session.get("payment_status") in billing.PAID_STATES
+    return {"status": "paid" if paid else "pending", "credits_added": added}
+
+
 @router.get("/billing/success", response_class=HTMLResponse)
 def success(session_id: str = Query(...), db: Session = Depends(get_db)):
     """Where Stripe sends the browser after paying. It also credits the account (idempotently), so local

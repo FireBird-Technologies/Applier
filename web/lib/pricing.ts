@@ -1,3 +1,5 @@
+import { API } from "./api";
+
 export interface Pricing {
   freeCredits: number;
   perApplication: number;
@@ -12,7 +14,6 @@ export const fallbackPricing: Pricing = {
   freeCredits: 10, perApplication: 0.1, minimumCharge: 3, minimumCredits: 30, maxCredits: 2000, suggested: [30, 50, 100, 250],
 };
 
-const API = (process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
 
 /** Prices come from the backend settings, so the site always matches what checkout charges. Refreshed every 5 minutes. */
 export async function getPricing(): Promise<Pricing> {

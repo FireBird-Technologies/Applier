@@ -57,7 +57,7 @@ def _stripe():
 def create_checkout_session(user: User, credits: int) -> dict:
     """Create a Stripe-hosted Checkout Session. The user pays on checkout.stripe.com in a browser tab."""
     stripe = _stripe()
-    base = settings.PUBLIC_API_URL.rstrip("/")
+    base = (settings.SITE_URL or settings.PUBLIC_API_URL).rstrip("/")  # where Stripe sends the customer afterwards
     session = stripe.checkout.Session.create(
         mode="payment",
         line_items=[{

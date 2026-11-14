@@ -270,3 +270,52 @@ def test_abandoned_reservations_expire(client):
         db.add(Application(user_id=uid, job_description="jd", resume={}, status="generating", created_at=utcnow() - timedelta(hours=1)))
         db.commit()
     assert client.get("/api/auth/me").json()["usage"]["used"] == 1  # the stale one (a crashed request) is ignored
+
+
+# ---------------------------------------------------------------- website return page
+def _fake_stripe_capturing(seen):
+    class FakeSession:
+        @staticmethod
+        def create(**kw):
+            seen.update(kw)
+            return {"url": "https://checkout.stripe.com/x"}
+
+    class FakeStripe:
+        checkout = type("c", (), {"Session": FakeSession})
+
+    return FakeStripe
+
+
+def test_stripe_returns_to_the_website_when_site_url_is_set(client, monkeypatch):
+    seen = {}
+    monkeypatch.setattr(billing.settings, "STRIPE_SECRET_KEY", "sk_test_x")
+    monkeypatch.setattr(billing, "_stripe", lambda: _fake_stripe_capturing(seen))
+    monkeypatch.setattr(billing.settings, "SITE_URL", "https://applier.site/")
+    monkeypatch.setattr(billing.settings, "PUBLIC_API_URL", "https://api.applier.site")
+    assert client.post("/api/billing/checkout", json={"credits": 30}).status_code == 200
+    assert seen["success_url"] == "https://applier.site/billing/success?session_id={CHECKOUT_SESSION_ID}"
+    assert seen["cancel_url"] == "https://applier.site/billing/cancel"
+
+    monkeypatch.setattr(billing.settings, "SITE_URL", "")  # no website configured: the API's own pages are used
+    client.post("/api/billing/checkout", json={"credits": 30})
+    assert seen["success_url"].startswith("https://api.applier.site/billing/success")
+
+
+def test_confirm_endpoint_for_the_website(client, monkeypatch):
+    monkeypatch.setattr(billing, "retrieve_session", lambda sid: paid_session(sid, 30))
+    web = TestClient(app)  # the website calls this without any login
+    r = web.get("/api/billing/confirm", params={"session_id": "cs_test_abc123"})
+    assert r.status_code == 200 and r.json() == {"status": "paid", "credits_added": 30}
+    assert web.get("/api/billing/confirm", params={"session_id": "cs_test_abc123"}).json() == {"status": "paid", "credits_added": 0}
+    assert client.get("/api/auth/me").json()["usage"]["paid_credits"] == 30  # added once
+
+    monkeypatch.setattr(billing, "retrieve_session", lambda sid: paid_session(sid, 30, status="unpaid"))
+    assert web.get("/api/billing/confirm", params={"session_id": "cs_test_other1"}).json() == {"status": "pending", "credits_added": 0}
+
+    assert web.get("/api/billing/confirm", params={"session_id": "not-a-session"}).status_code == 422
+
+    def boom(sid):
+        raise RuntimeError("stripe down")
+
+    monkeypatch.setattr(billing, "retrieve_session", boom)
+    assert web.get("/api/billing/confirm", params={"session_id": "cs_test_abc999"}).status_code == 502
