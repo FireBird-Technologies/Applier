@@ -141,3 +141,5 @@ class ApplicationOut(BaseModel):
     created_at: datetime
     applied_at: datetime | None = None
     notice: str = ""  # e.g. what was trimmed to keep one page
+    can_undo: bool = False
+    last_edit: str = ""  # what Undo would revert, for the button tooltip

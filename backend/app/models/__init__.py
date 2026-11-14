@@ -1,4 +1,4 @@
-from app.models.application import Application, ApplicationStatus  # noqa: F401
+from app.models.application import Application, ApplicationEdit, ApplicationStatus  # noqa: F401
 from app.models.payment import Payment  # noqa: F401
 from app.models.source_resume import SourceResume  # noqa: F401
 from app.models.update_email import UpdateEmail, UpdateEmailSend  # noqa: F401

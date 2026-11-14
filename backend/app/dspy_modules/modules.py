@@ -32,11 +32,12 @@ def tailor_resume(source: str, job_title: str, company: str, jd: str) -> Tailore
     return out.resume
 
 
-def revise_resume(source: str, current: TailoredResume, jd: str, instruction: str) -> TailoredResume:
+def revise_resume(source: str, current: TailoredResume, jd: str, instruction: str, previous_edits: str = "") -> TailoredResume:
     with dspy.context(lm=get_lm()):
         out = dspy.Predict(ReviseResume)(
             source_resume=source[: settings.MAX_SOURCE_CHARS],
             current_resume=current,
+            previous_edits=previous_edits or "(none yet)",
             job_description=jd[: settings.MAX_JOB_CHARS],
             instruction=instruction,
         )

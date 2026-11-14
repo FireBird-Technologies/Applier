@@ -27,7 +27,7 @@ def client(monkeypatch):
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
     monkeypatch.setattr(apps_router, "tailor_resume", fake_tailor)
-    monkeypatch.setattr(apps_router, "revise_resume", lambda s, c, j, i: c.model_copy(update={"summary": i}))
+    monkeypatch.setattr(apps_router, "revise_resume", lambda s, c, j, i, h="": c.model_copy(update={"summary": i}))
     monkeypatch.setattr(detect_service, "detect_job_page",
                         lambda u, t, x, s="": DetectOut(is_job=True, confidence=0.8, job_title="X", company="Y"))
     with SessionLocal() as db:

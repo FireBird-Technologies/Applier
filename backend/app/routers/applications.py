@@ -3,13 +3,14 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
 from app.config import settings
 from app.database import get_db
 from app.dspy_modules.modules import revise_resume, tailor_resume
-from app.models.application import Application, ApplicationStatus
+from app.models.application import Application, ApplicationEdit, ApplicationStatus
 from app.models.source_resume import SourceResume
 from app.models.user import User
 from app.routers.sources import active_source
@@ -30,7 +31,28 @@ def _out(a: Application) -> ApplicationOut:
         id=a.id, job_url=a.job_url, job_title=a.job_title, company=a.company, status=a.status,
         version=a.version, resume=TailoredResume.model_validate(a.resume),
         created_at=a.created_at, applied_at=a.applied_at,
+        can_undo=len(a.edits) > 1, last_edit=_describe(a.edits[-1]) if len(a.edits) > 1 else "",
     )
+
+
+def _describe(e: ApplicationEdit) -> str:
+    return e.instruction if e.kind == "ai" else "your manual edits"
+
+
+def _record(a: Application, kind: str, instruction: str = "") -> None:
+    """Snapshot the resume as it is now. Resumes made before history existed get a baseline first."""
+    if not a.edits:
+        a.edits.append(ApplicationEdit(kind="generate", resume=a.resume))
+    a.edits.append(ApplicationEdit(kind=kind, instruction=instruction, resume=a.resume))
+
+
+def _history_text(a: Application) -> str:
+    """Earlier requests, oldest first, for the reviser. Undone edits are gone, so they are never re-applied."""
+    lines = []
+    for e in a.edits[1:][-20:]:
+        lines.append(f"- {e.instruction}" if e.kind == "ai" else "- (the user edited the text by hand)")
+    return "
+".join(lines)
 
 
 def _owned(db: Session, user: User, app_id: int) -> Application:
@@ -78,6 +100,7 @@ def generate(body: GenerateIn, user: User = Depends(get_current_user), db: Sessi
         job_title=body.job_title[:512], company=body.company[:512],
         job_description=jd, resume=resume.model_dump(),
     )
+    a.edits.append(ApplicationEdit(kind="generate", resume=a.resume))
     db.add(a)
     db.commit()
     return _out(a)
@@ -86,7 +109,8 @@ def generate(body: GenerateIn, user: User = Depends(get_current_user), db: Sessi
 @router.get("/applications", response_model=list[ApplicationOut])
 def list_applications(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     rows = db.scalars(
-        select(Application).where(Application.user_id == user.id).order_by(Application.id.desc()).limit(50)
+        select(Application).where(Application.user_id == user.id).options(selectinload(Application.edits))
+        .order_by(Application.id.desc()).limit(50)
     )
     return [_out(a) for a in rows]
 
@@ -124,8 +148,11 @@ def save_manual_edits(app_id: int, body: ResumeIn, user: User = Depends(get_curr
     if not edited.name:
         raise HTTPException(400, "Resume needs a name")
     fitted = fit_to_one_page(edited)
+    if not a.edits:
+        a.edits.append(ApplicationEdit(kind="generate", resume=a.resume))  # baseline before the first change
     a.resume = fitted.model_dump()
     a.version += 1
+    _record(a, "manual")
     db.commit()
     out = _out(a)
     out.notice = describe_trim(edited, fitted)
@@ -138,9 +165,25 @@ def edit(app_id: int, body: EditIn, user: User = Depends(get_current_user), db: 
     source = db.get(SourceResume, a.source_resume_id) if a.source_resume_id else None
     updated = _llm_call(
         revise_resume, source.text if source else "", TailoredResume.model_validate(a.resume),
-        a.job_description, body.instruction,
+        a.job_description, body.instruction, _history_text(a),
     )
+    if not a.edits:
+        a.edits.append(ApplicationEdit(kind="generate", resume=a.resume))  # baseline before the first change
     a.resume = fit_to_one_page(updated).model_dump()
+    a.version += 1
+    _record(a, "ai", body.instruction.strip())
+    db.commit()
+    return _out(a)
+
+
+@router.post("/applications/{app_id}/undo", response_model=ApplicationOut)
+def undo(app_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Step back one edit (AI or manual). The undone request is forgotten, so it is not re-applied later."""
+    a = _owned(db, user, app_id)
+    if len(a.edits) <= 1:
+        raise HTTPException(400, "Nothing to undo")
+    a.edits.pop()
+    a.resume = a.edits[-1].resume
     a.version += 1
     db.commit()
     return _out(a)

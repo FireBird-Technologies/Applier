@@ -1,0 +1,20 @@
+# Databases (SQLite and its sidecar files)
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Secrets
+.env
+.env.local
+*.pem
+
+# Dependencies and build output
+node_modules/
+.venv/
+__pycache__/
+.pytest_cache/
+dist/
+.next/
