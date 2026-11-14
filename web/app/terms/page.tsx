@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { LegalPage } from "@/components/Prose";
 import { getPricing } from "@/lib/pricing";
 import { money, site } from "@/lib/site";
@@ -30,7 +31,7 @@ export default async function Terms() {
       <ul>
         <li>You start with {pricing.freeCredits} free applications.</li>
         <li>A credit is used each time you generate a tailored resume. Editing it, undoing edits, previewing it and downloading it do not use another credit. If generation fails, no credit is used.</li>
-        <li>Additional credits cost {money(pricing.perApplication)} each with a {money(pricing.minimumCharge)} minimum purchase. Payments are processed by Stripe.</li>
+        <li>Additional credits cost {money(pricing.perApplication)} each with a {money(pricing.minimumCharge)} minimum purchase. Payments are processed by Stripe. Refunds are covered by the <Link href="/refunds" className="underline">refund policy</Link>.</li>
         <li>Prices for future purchases may change. The price you see at checkout is the price you pay.</li>
       </ul>
 

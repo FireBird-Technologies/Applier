@@ -8,7 +8,7 @@ export const site = {
   // Until the store listing exists, "Add to Chrome" points at the install steps.
   installUrl: process.env.NEXT_PUBLIC_CHROME_STORE_URL || "/faq#install",
   installIsExternal: Boolean(process.env.NEXT_PUBLIC_CHROME_STORE_URL),
-  supportEmail: process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? "",
+  supportEmail: process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "support@applier.site",
   updated: "November 14, 2026",
 };
 
@@ -31,9 +31,11 @@ export const footerLinks = {
     { href: "/faq", label: "FAQ" },
     { href: "/blog", label: "Blog" },
     { href: "/faq#install", label: "Install guide" },
+    { href: "/contact", label: "Contact" },
   ],
   Legal: [
     { href: "/privacy", label: "Privacy" },
     { href: "/terms", label: "Terms" },
+    { href: "/refunds", label: "Refunds" },
   ],
 };

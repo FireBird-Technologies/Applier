@@ -12,4 +12,26 @@ body { background: #fff; color: #000; -webkit-font-smoothing: antialiased; }
 :target { scroll-margin-top: 5rem; }
 summary { list-style: none; }
 summary::-webkit-details-marker { display: none; }
-@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+/* Hairline dot field behind the hero. Flat dots, no gradient. */
+.dots {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Ccircle cx='1' cy='1' r='1' fill='%23d4d4d4'/%3E%3C/svg%3E");
+  background-size: 22px 22px;
+}
+
+/* Scroll reveal: opacity and position only. */
+.reveal { opacity: 0; transform: translateY(14px); transition: opacity 0.6s ease, transform 0.6s ease; }
+.reveal.in { opacity: 1; transform: none; }
+
+/* Demo: items fade up one after another. */
+.step-in { opacity: 0; transform: translateY(6px); transition: opacity 0.45s ease, transform 0.45s ease; }
+.step-in.on { opacity: 1; transform: none; }
+
+@keyframes caret { 50% { opacity: 0; } }
+.caret { animation: caret 1s steps(1) infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .reveal, .step-in { opacity: 1; transform: none; transition: none; }
+  .caret { animation: none; }
+}

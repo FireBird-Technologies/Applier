@@ -79,7 +79,7 @@ export default async function PricingPage() {
       </div>
       <p className="mt-4 text-sm text-neutral-500">
         Purchases below {pricing.minimumCredits} credits are not offered because of the {money(pricing.minimumCharge)} minimum. Questions? See the{" "}
-        <Link href="/faq" className="underline">FAQ</Link>.
+        <Link href="/faq" className="underline">FAQ</Link> or the <Link href="/refunds" className="underline">refund policy</Link>.
       </p>
     </div>
   );

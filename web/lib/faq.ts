@@ -1,5 +1,5 @@
 import type { Pricing } from "./pricing";
-import { money } from "./site";
+import { money, site } from "./site";
 
 export interface FaqItem {
   id: string;
@@ -42,6 +42,11 @@ export const getFaq = (pricing: Pricing): FaqItem[] => [
     id: "promo",
     q: "Do you accept promo codes?",
     a: "Yes. When you buy credits, Stripe's checkout page has an Add promotion code box. Enter the code there and the discount is applied before you pay. The credits you receive stay the same.",
+  },
+  {
+    id: "refunds",
+    q: "Can I get a refund?",
+    a: `Credits are non-refundable once bought, except for a duplicate or mistaken charge, a fault on our side that stopped you using credits you paid for, or where the law gives you a right to one. If a resume fails to generate you are not charged. To ask, email ${site.supportEmail}. The full policy is on the refund policy page.`,
   },
   {
     id: "formats",

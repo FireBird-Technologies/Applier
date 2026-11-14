@@ -43,13 +43,23 @@ export default function Privacy() {
       </ul>
       <p>We do not sell your data or use it for advertising.</p>
 
+      <h2>Cookies and analytics</h2>
+      <p>
+        This website does not set cookies and has no analytics or advertising trackers. It is hosted on Cloudflare, which may set a
+        security cookie to protect the site from bots. The Chrome extension does not use cookies: it keeps its settings in the browser&apos;s
+        extension storage.
+      </p>
+
       <h2>Email</h2>
       <p>
         We send a welcome email and a notice when you run out of credits. We may also send product updates, each with an unsubscribe link that works in one click.
       </p>
 
       <h2>Keeping and deleting data</h2>
-      <p>We keep your data until you ask us to delete it. Email {contact} and we will delete your account and the resumes stored with it.</p>
+      <p>
+        We keep your data until you ask us to delete it. Email {contact} and we will delete your account and the resumes stored with it. You
+        can also ask us for a copy of the data we hold about you, or to correct it.
+      </p>
 
       <h2>Contact</h2>
       <p>Questions about privacy: {contact}.</p>
