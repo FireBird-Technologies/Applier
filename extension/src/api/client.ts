@@ -52,7 +52,6 @@ export const api = {
   saveSourceDoc: (resume: Resume) => json<SourceDoc>("/api/source/resume", { method: "PUT", body: JSON.stringify({ resume }) }),
   editSourceDoc: (instruction: string) => post<SourceDoc>("/api/source/resume/edit", { instruction }),
   undoSourceDoc: () => post<SourceDoc>("/api/source/resume/undo", {}),
-  pasteSource: (text: string) => post<SourceResume>("/api/source/text", { text }),
   detect: (p: PageData, signal?: AbortSignal) =>
     json<Detect>("/api/detect", {
       method: "POST",

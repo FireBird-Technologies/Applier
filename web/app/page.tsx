@@ -11,7 +11,7 @@ export const revalidate = 300; // prices come from the API; refresh them
 
 const steps = [
   { n: "01", title: "Sign in with Google", text: "One click in the side panel. No passwords to make or remember." },
-  { n: "02", title: "Add your source resume", text: "Upload a PDF, DOCX, Markdown or text file, or paste it. This is the only place facts come from." },
+  { n: "02", title: "Add your source resume", text: "Upload a PDF, DOCX, Markdown or text file. This is the only place facts come from." },
   { n: "03", title: "Open a job posting", text: "Applier checks whether the page is a job and reads the description. Wrong guess? Override it, or stop the scan." },
   { n: "04", title: "Generate, adjust, download", text: "Preview the tailored resume, ask for changes or edit by hand as often as you like, then download it." },
 ];

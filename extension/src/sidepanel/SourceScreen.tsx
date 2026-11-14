@@ -11,8 +11,6 @@ interface Props {
 }
 
 export function SourceScreen({ current, onSaved, onView, onCancel }: Props) {
-  const [mode, setMode] = useState<"upload" | "paste">("upload");
-  const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState<SourceResume | null>(null); // set => show the success tick
@@ -41,6 +39,9 @@ export function SourceScreen({ current, onSaved, onView, onCancel }: Props) {
           <div className="mt-0.5 max-w-[260px] truncate text-gray-500">{saved.filename}</div>
           <div className="text-[12px] text-gray-400">{saved.chars.toLocaleString()} characters read</div>
         </div>
+        <p className="max-w-[260px] text-[13px] leading-relaxed text-gray-600">
+          Next, open a job posting on any job website. Applier detects it automatically and offers to tailor this resume.
+        </p>
         <button className="btn-primary" onClick={() => onSaved(saved)}>Continue</button>
       </div>
     );
@@ -66,34 +67,17 @@ export function SourceScreen({ current, onSaved, onView, onCancel }: Props) {
         </div>
       )}
 
-      <div className="flex gap-1 border-b border-gray-200">
-        {(["upload", "paste"] as const).map((m) => (
-          <button key={m} onClick={() => setMode(m)}
-            className={`-mb-px border-b-2 px-2 pb-2 text-[13px] ${mode === m ? "border-black font-medium" : "border-transparent text-gray-500"}`}>
-            {m === "upload" ? "Upload file" : "Paste text"}
-          </button>
-        ))}
-      </div>
-
-      {mode === "upload" ? (
-        <>
-          <input ref={file} type="file" accept=".pdf,.docx,.md,.txt" className="hidden"
-            onChange={(e) => e.target.files?.[0] && run(() => api.uploadSource(e.target.files![0]))} />
-          <button className="flex w-full flex-col items-center gap-1 rounded border border-dashed border-gray-400 py-8 hover:bg-gray-100" disabled={busy}
-            onClick={() => file.current?.click()}>
-            <span className="font-medium">{busy ? "Reading..." : "Choose a file"}</span>
-            <span className="text-gray-500">PDF, DOCX, MD or TXT, up to 5 MB</span>
-          </button>
-        </>
-      ) : (
-        <>
-          <textarea className="field h-48 resize-none font-mono text-[12px]" placeholder="Paste your resume text here"
-            value={text} onChange={(e) => setText(e.target.value)} />
-          <button className="btn-primary w-full" disabled={busy || text.trim().length < 80} onClick={() => run(() => api.pasteSource(text))}>
-            {busy ? "Saving..." : "Save resume"}
-          </button>
-        </>
-      )}
+      <input ref={file} type="file" accept=".pdf,.docx,.md,.txt" className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = ""; // so choosing the same file again still fires
+          if (f) run(() => api.uploadSource(f));
+        }} />
+      <button className="flex w-full flex-col items-center gap-1 rounded border border-dashed border-gray-400 py-8 hover:bg-gray-100" disabled={busy}
+        onClick={() => file.current?.click()}>
+        <span className="font-medium">{busy ? "Reading..." : "Choose a file"}</span>
+        <span className="text-gray-500">PDF, DOCX, MD or TXT, up to 5 MB</span>
+      </button>
 
       {error && <p className="border-l-2 border-black pl-2">{error}</p>}
       {onCancel && <button className="btn-ghost w-full" onClick={onCancel}>Cancel</button>}

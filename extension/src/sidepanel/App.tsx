@@ -43,6 +43,15 @@ export function App() {
   const signOut = async () => { await clearToken(); setUser(null); setSource(null); setView("main"); setStage("signed-out"); };
   const refreshUsage = useCallback(() => { api.me().then((m) => setUsage(m.usage)).catch(() => {}); }, []);
   const closeBuy = useCallback(() => setView("main"), []);
+  const [scanTick, setScanTick] = useState(0);
+  // From any screen: go to the job screen and scan the current tab.
+  const startScan = () => { setView("main"); setScanTick((t) => t + 1); };
+
+  // Coming back to the panel (for example after paying in another tab) shows up-to-date credits.
+  useEffect(() => {
+    window.addEventListener("focus", refreshUsage);
+    return () => window.removeEventListener("focus", refreshUsage);
+  }, [refreshUsage]);
   const openSource = () => chrome.tabs.create({ url: chrome.runtime.getURL("editor.html?source=1") });
 
   // The editor tab announces saves to the source resume; reload its size and name here.
@@ -95,6 +104,7 @@ export function App() {
                 aria-label="View and edit source resume" title="View and edit source resume"><EyeIcon size={15} /></button>
             </span>
           )}
+          {source && <button className="hover:text-black" onClick={startScan} title="Scan the current tab for a job posting">Scan</button>}
           <button className="hover:text-black" onClick={signOut} title={user?.email}>Sign out</button>
         </div>
       </header>
@@ -109,7 +119,7 @@ export function App() {
             onSaved={(s) => { setSource(s); setView("main"); }}
             onCancel={source ? () => setView("main") : undefined} />
         ) : (
-          usage && <JobScreen usage={usage} onUsage={refreshUsage} onBuy={buy} />
+          usage && <JobScreen usage={usage} onUsage={refreshUsage} onBuy={buy} scanTick={scanTick} />
         )}
       </main>
 

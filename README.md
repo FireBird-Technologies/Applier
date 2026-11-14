@@ -93,8 +93,9 @@ All numbers come from env: `FREE_APPLICATIONS`, `PRICE_PER_APPLICATION_USD`, `MI
 ## Editing resumes
 The enlarge icon (tailored resume) and the eye icon (source resume) open a full-tab editor with Edit and Preview tabs.
 Sections can be removed, moved up or down and added back; entries inside a section can be moved too. Every AI or manual edit is
-undoable, and the AI is told your earlier requests so it does not undo them. The source resume is read into sections by the AI the
-first time you open it; edits are written back to the text that tailoring uses.
+undoable, and the AI is told your earlier requests so it does not undo them. The source resume is read into sections by the AI in the
+background right after you upload it, so the eye icon opens instantly (if the background step failed, or you open it
+mid-parse, it is done or awaited on demand). Edits are written back to the text that tailoring uses.
 
 ## Website (Next.js)
 `web/` is the marketing site: home, pricing, FAQ, blog, privacy and terms, in the same black-and-white Geist style.

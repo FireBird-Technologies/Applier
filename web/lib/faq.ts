@@ -46,7 +46,7 @@ export const getFaq = (pricing: Pricing): FaqItem[] => [
   {
     id: "formats",
     q: "Which formats can I upload and download?",
-    a: "Upload your source resume as PDF, DOCX, Markdown or plain text, up to 5 MB. Scanned PDFs have no readable text, so paste the text instead. Tailored resumes download as PDF, DOCX, Markdown or TXT.",
+    a: "Upload your source resume as PDF, DOCX, Markdown or plain text, up to 5 MB. Scanned PDFs have no readable text, so export a text-based PDF or use a DOCX file instead. Tailored resumes download as PDF, DOCX, Markdown or TXT.",
   },
   {
     id: "one-page",

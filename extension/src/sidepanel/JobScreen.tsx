@@ -12,9 +12,11 @@ interface Props {
   usage: Usage;
   onUsage: () => void;
   onBuy: () => void;
+  /** Bumped by the header's Scan button. Each change starts a fresh scan of the current tab. */
+  scanTick?: number;
 }
 
-export function JobScreen({ usage, onUsage, onBuy }: Props) {
+export function JobScreen({ usage, onUsage, onBuy, scanTick = 0 }: Props) {
   const [page, setPage] = useState<PageData | null | undefined>(undefined); // undefined = scanning, null = unreadable
   const [det, setDet] = useState<Detect | null>(null);
   const [detecting, setDetecting] = useState(false);
@@ -31,6 +33,14 @@ export function JobScreen({ usage, onUsage, onBuy }: Props) {
   const abort = useRef<AbortController | null>(null);
   const busyRef = useRef(busy);
   busyRef.current = busy;
+
+  // The header's Scan button. (If the user was on another screen, this screen mounts and scans by itself.)
+  const firstTick = useRef(true);
+  useEffect(() => {
+    if (firstTick.current) { firstTick.current = false; return; }
+    if (!busyRef.current) scan();  // never wipe a resume that is being generated or edited
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scanTick]);
 
   const scan = useCallback(async () => {
     abort.current?.abort(); // a newer scan supersedes any request still in flight
@@ -151,6 +161,7 @@ export function JobScreen({ usage, onUsage, onBuy }: Props) {
       {!detecting && !app && !isJob && (
         <div className="space-y-3">
           <p>{stopped ? "Scan stopped." : det ? `This doesn't look like a job posting. ${det.reason}` : "Couldn't check this page."}</p>
+          <p className="text-[12px] text-gray-500">Open a job posting and Applier detects it automatically.</p>
           <button className="btn-ghost w-full" onClick={() => setOverride(true)}>This is a job page</button>
         </div>
       )}
@@ -167,9 +178,12 @@ export function JobScreen({ usage, onUsage, onBuy }: Props) {
           <div><label className="label">Role</label><input className="field" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Job title" /></div>
           <div><label className="label">Company</label><input className="field" value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Company" /></div>
           <div>
-            <div className="flex items-baseline justify-between">
-              <label className="label">Job description</label>
-              <span className="text-[11px] text-gray-400">{jd.length.toLocaleString()} chars</span>
+            <div className="mb-1 flex items-baseline justify-between gap-3">
+              <div className="min-w-0">
+                <label className="label mb-0 inline">Job description</label>
+                <span className="ml-2 text-[11px] text-gray-400">The system cleans this text to remove anything unnecessary.</span>
+              </div>
+              <span className="shrink-0 text-[11px] text-gray-400">{jd.length.toLocaleString()} chars</span>
             </div>
             <textarea className="field h-44 resize-y text-[12px] leading-snug" value={jd} onChange={(e) => setJd(e.target.value)}
               placeholder="Paste the job description here" />

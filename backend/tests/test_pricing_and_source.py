@@ -149,12 +149,6 @@ def test_background_failure_is_retried_when_the_editor_is_opened(env, monkeypatc
     assert d.status_code == 200 and d.json()["resume"]["name"] == "Jane Doe" and calls["parse"] == 1
 
 
-def test_paste_also_prepares_the_editable_view(env):
-    c, calls, _ = env
-    assert c.post("/api/source/text", json={"text": RESUME.decode()}).status_code == 200
-    assert calls["parse"] == 1
-
-
 def test_opening_while_the_background_parse_runs_does_not_parse_twice(env, monkeypatch):
     """The editor waits for the in-flight parse instead of starting a second AI call."""
     import threading
@@ -189,3 +183,8 @@ def test_opening_while_the_background_parse_runs_does_not_parse_twice(env, monke
     with SessionLocal() as db:
         s = db.get(SourceResume, sid)
         assert s.resume["name"] == "Slow" and len(s.edits) == 1  # one baseline, not three
+
+
+def test_there_is_no_paste_endpoint_any_more(env):
+    c, _, _ = env
+    assert c.post("/api/source/text", json={"text": RESUME.decode()}).status_code in (404, 405)

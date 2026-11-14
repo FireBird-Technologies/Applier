@@ -126,11 +126,6 @@ class SourceDocOut(BaseModel):
     notice: str = ""
 
 
-class SourceTextIn(BaseModel):
-    text: str
-    filename: str = "pasted.txt"
-
-
 class PageIn(BaseModel):
     url: str = ""
     title: str = ""

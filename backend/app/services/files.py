@@ -22,5 +22,5 @@ def extract_text(filename: str, data: bytes) -> str:
         raise UnsupportedFile(f"Unsupported file type .{ext}. Use pdf, docx, md or txt.")
     text = text.strip()
     if len(text) < 80:
-        raise UnsupportedFile("Could not read any text from that file (scanned PDF?). Paste the text instead.")
+        raise UnsupportedFile("Could not read any text from that file. If it is a scanned PDF, export a text-based PDF or use a DOCX file instead.")
     return text

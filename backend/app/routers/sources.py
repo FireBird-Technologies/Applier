@@ -11,7 +11,7 @@ from app.database import SessionLocal, get_db
 from app.dspy_modules.modules import parse_resume, revise_resume
 from app.models.source_resume import SourceEdit, SourceResume
 from app.models.user import User
-from app.schemas import SECTIONS, EditIn, ResumeIn, SourceDocOut, SourceResumeOut, SourceTextIn, TailoredResume
+from app.schemas import SECTIONS, EditIn, ResumeIn, SourceDocOut, SourceResumeOut, TailoredResume
 from app.services.files import UnsupportedFile, extract_text
 from app.services.history import clean_resume, describe, history_text, record
 from app.services.render import to_markdown
@@ -62,15 +62,6 @@ async def upload(
         raise HTTPException(400, str(e))
     s = _save(db, user, file.filename or "resume", text)
     background.add_task(_parse_in_background, s.id)  # prepare the editable view now, so opening it later is instant
-    return _out(s)
-
-
-@router.post("/text", response_model=SourceResumeOut)
-def paste(body: SourceTextIn, background: BackgroundTasks, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if len(body.text.strip()) < 80:
-        raise HTTPException(400, "Resume text is too short")
-    s = _save(db, user, body.filename, body.text.strip())
-    background.add_task(_parse_in_background, s.id)
     return _out(s)
 
 
