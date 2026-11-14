@@ -5,6 +5,8 @@ const base = "inline-flex items-center justify-center gap-2 rounded-md border bo
 const styles = {
   primary: `${base} bg-black text-white hover:bg-neutral-700`,
   ghost: `${base} bg-neutral-100 text-black hover:bg-neutral-200`,
+  // For dark backgrounds. A real variant, because overriding a variant's text colour with className can lose the CSS tie.
+  inverse: `${base} bg-white text-black hover:bg-neutral-200`,
 };
 
 export function ButtonLink({ href, external, variant = "primary", children, className = "" }: {

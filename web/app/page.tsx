@@ -154,9 +154,9 @@ export default async function Home() {
               <div className="flex flex-wrap gap-2">{["PDF", "DOCX", "MD", "TXT"].map((f) => <Chip key={f}>{f}</Chip>)}</div>
             </Card>
           </Reveal>
-          <Reveal delay={80}>
+          <Reveal className="md:col-span-2" delay={80}>
             <Card className="h-full" label="Pricing" title="Pay per resume." text={`${pricing.freeCredits} free to start. No subscription.`}>
-              <div className="font-mono text-4xl font-semibold" style={{ letterSpacing: "-0.04em" }}>{money(pricing.perApplication)}<span className="ml-2 font-sans text-sm font-normal text-neutral-500">per resume</span></div>
+              <div className="font-mono text-4xl font-semibold" style={{ letterSpacing: "-0.04em" }}>{money(pricing.perApplication)}<span className="ml-2 font-sans text-sm font-normal tracking-normal text-neutral-500">per resume</span></div>
             </Card>
           </Reveal>
         </div>
@@ -191,8 +191,8 @@ export default async function Home() {
         </div>
       </Section>
 
-      <Section eyebrow="05 / Pricing" title="Simple, with the maths shown."
-        intro={<>A credit is spent when a resume is delivered. Nothing else costs anything. <Link href="/pricing" className="font-medium text-black underline underline-offset-4">See pricing details</Link></>}>
+      <Section id="pricing" eyebrow="05 / Pricing" title="Simple, with the maths shown."
+        intro={<>A credit is spent when a resume is delivered. Nothing else costs anything. <Link href="/pricing" className="whitespace-nowrap font-medium text-black underline underline-offset-4">See pricing details</Link></>}>
         <Reveal>
           <dl className="grid gap-px overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-200 sm:grid-cols-2 lg:grid-cols-4">
             {[
@@ -218,7 +218,7 @@ export default async function Home() {
         </Reveal>
       </Section>
 
-      <Section eyebrow="07 / Read more" title="From the blog.">
+      <Section id="blog" eyebrow="07 / Read more" title="From the blog.">
         <div className="grid gap-4 md:grid-cols-3">
           {posts.map((p, i) => (
             <Reveal key={p.slug} delay={i * 80}>
@@ -234,7 +234,7 @@ export default async function Home() {
         </div>
       </Section>
 
-      <section className="mx-auto max-w-6xl px-6 pt-24">
+      <section id="start" className="mx-auto max-w-6xl px-6 pt-24">
         <Reveal>
           <div className="rounded-3xl bg-black px-6 py-20 text-center text-white md:py-28">
             <h2 className="mx-auto max-w-2xl text-4xl font-semibold leading-[1.05] md:text-6xl" style={{ letterSpacing: "-0.045em" }}>
@@ -242,7 +242,7 @@ export default async function Home() {
             </h2>
             <p className="mx-auto mt-6 max-w-md text-lg text-neutral-400">Add Applier to Chrome and tailor your first {pricing.freeCredits} resumes free.</p>
             <div className="mt-10">
-              <ButtonLink href={site.installUrl} external={site.installIsExternal} className="bg-white px-7 py-3.5 text-[15px] text-black hover:bg-neutral-200">Add to Chrome</ButtonLink>
+              <ButtonLink href={site.installUrl} external={site.installIsExternal} variant="inverse" className="px-7 py-3.5 text-[15px]">Add to Chrome</ButtonLink>
             </div>
           </div>
         </Reveal>

@@ -128,14 +128,14 @@ export function HeroDemo() {
 
       <div className="grid md:grid-cols-2 md:divide-x md:divide-neutral-200">
         {/* the job posting */}
-        <div className="space-y-5 p-6 md:p-8">
+        <div className="flex flex-col gap-5 p-6 md:p-8">
           <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-neutral-500">Job posting</div>
           <div>
             <div className="text-[20px] font-semibold" style={{ letterSpacing: "-0.02em" }}>{job.role}</div>
             <div className="text-neutral-500">{job.company}</div>
           </div>
           <p className="text-[15px] leading-relaxed text-neutral-700"><Highlighted text={job.posting} keywords={job.keywords} /></p>
-          <div className={`step-in space-y-2 ${stage >= 1 ? "on" : ""}`}>
+          <div className={`step-in mt-auto space-y-2 ${stage >= 1 ? "on" : ""}`}>
             <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-neutral-500">What they ask for</div>
             <div className="flex flex-wrap gap-2">
               {job.matched.map((k) => (
