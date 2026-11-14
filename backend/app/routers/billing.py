@@ -1,13 +1,14 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
 from app.database import get_db
 from app.models.user import User
-from app.schemas import CheckoutIn, CheckoutOut
+from app.config import settings
+from app.schemas import CheckoutIn, CheckoutOut, PricingOut
 from app.services import billing
 from app.services.pages import simple_page
 
@@ -15,13 +16,24 @@ log = logging.getLogger(__name__)
 router = APIRouter(tags=["billing"])
 
 
+@router.get("/api/pricing", response_model=PricingOut)
+def pricing(response: Response):
+    """Public. The website reads prices from here so they always match what checkout charges."""
+    response.headers["Cache-Control"] = "public, max-age=60"
+    return PricingOut(
+        free_credits=settings.FREE_APPLICATIONS, price_per_application_usd=settings.PRICE_PER_APPLICATION_USD,
+        minimum_charge_usd=settings.MINIMUM_CHARGE_USD, min_credits=billing.min_credits(),
+        max_credits=billing.max_credits(), suggested_credits=billing.suggested_credits(),
+    )
+
+
 @router.post("/api/billing/checkout", response_model=CheckoutOut)
 def checkout(body: CheckoutIn, user: User = Depends(get_current_user)):
     """Create a Stripe Checkout Session; the extension opens the returned URL in a new browser tab."""
     if body.credits < billing.min_credits():
         raise HTTPException(400, f"Minimum purchase is {billing.min_credits()} credits")
-    if body.credits > billing.MAX_CREDITS:
-        raise HTTPException(400, f"Maximum purchase is {billing.MAX_CREDITS} credits")
+    if body.credits > billing.max_credits():
+        raise HTTPException(400, f"Maximum purchase is {billing.max_credits()} credits")
     try:
         return billing.create_checkout_session(user, body.credits)
     except billing.PaymentsNotConfigured:

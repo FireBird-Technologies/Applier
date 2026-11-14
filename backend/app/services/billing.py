@@ -12,9 +12,6 @@ from app.models.payment import Payment
 from app.models.user import User
 
 log = logging.getLogger(__name__)
-MAX_CREDITS = 2000
-
-
 class PaymentsNotConfigured(Exception):
     pass
 
@@ -26,6 +23,17 @@ def _cents(usd: float) -> Decimal:
 def min_credits() -> int:
     """Smallest purchase: the credits that reach the minimum charge."""
     return math.ceil(_cents(settings.MINIMUM_CHARGE_USD) / _cents(settings.PRICE_PER_APPLICATION_USD))
+
+
+def max_credits() -> int:
+    return max(settings.MAX_CREDITS_PER_PURCHASE, min_credits())
+
+
+def suggested_credits() -> list[int]:
+    """Pack sizes to suggest: the minimum purchase plus SUGGESTED_CREDITS, kept within the allowed range."""
+    lo, hi = min_credits(), max_credits()
+    picked = {int(p) for p in settings.SUGGESTED_CREDITS.replace(" ", "").split(",") if p.isdigit() and lo <= int(p) <= hi}
+    return sorted({lo, *picked})
 
 
 def amount_cents(credits: int) -> int:

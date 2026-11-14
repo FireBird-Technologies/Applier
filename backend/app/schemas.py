@@ -75,6 +75,17 @@ class UsageOut(BaseModel):
     price_per_application_usd: float
     minimum_charge_usd: float
     min_credits: int
+    max_credits: int
+    suggested_credits: list[int]
+
+
+class PricingOut(BaseModel):
+    free_credits: int
+    price_per_application_usd: float
+    minimum_charge_usd: float
+    min_credits: int
+    max_credits: int
+    suggested_credits: list[int]
 
 
 class CheckoutIn(BaseModel):
@@ -100,10 +111,6 @@ class SourceResumeOut(BaseModel):
     preview: str
     created_at: datetime
 
-
-class _UnusedSourceContentOut(BaseModel):
-    filename: str
-    text: str
 
 
 class SourceDocOut(BaseModel):

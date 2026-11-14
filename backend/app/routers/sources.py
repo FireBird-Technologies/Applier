@@ -134,8 +134,7 @@ def edit_source_doc(body: EditIn, user: User = Depends(get_current_user), db: Se
         updated = revise_resume(
             to_markdown(TailoredResume.model_validate(s.edits[0].resume)), current,
             "(none: this is the user's own base resume, not a tailored one. Do not tailor it to any job.)",
-            body.instruction + "
-(The one-page limit does not apply to this base resume.)", history_text(s),
+            body.instruction + "\n(The one-page limit does not apply to this base resume.)", history_text(s),
         )
     except Exception:
         log.exception("Source resume edit failed")

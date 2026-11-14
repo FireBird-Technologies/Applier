@@ -58,6 +58,9 @@ class Settings(BaseSettings):
     CREDITS_LOW_REMAINING: float = 0.2
 
     FREE_APPLICATIONS: int = 10
+    # Everything the UI shows about buying credits comes from here (extension and website both read it from the API).
+    MAX_CREDITS_PER_PURCHASE: int = 2000
+    SUGGESTED_CREDITS: str = "50,100,250,500"  # comma-separated pack sizes; the minimum purchase is always offered too
     PRICE_PER_APPLICATION_USD: float = 0.10
     MINIMUM_CHARGE_USD: float = 3.00
 

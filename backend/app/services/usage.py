@@ -5,7 +5,7 @@ from app.config import settings
 from app.models.application import Application, ApplicationStatus
 from app.models.user import User
 from app.schemas import UsageOut
-from app.services.billing import min_credits
+from app.services.billing import max_credits, min_credits, suggested_credits
 
 
 def applied_count(db: Session, user: User) -> int:
@@ -43,4 +43,6 @@ def get_usage(db: Session, user: User) -> UsageOut:
         price_per_application_usd=settings.PRICE_PER_APPLICATION_USD,
         minimum_charge_usd=settings.MINIMUM_CHARGE_USD,
         min_credits=min_credits(),
+        max_credits=max_credits(),
+        suggested_credits=suggested_credits(),
     )

@@ -153,14 +153,7 @@ def test_bought_credits_unlock_downloads(client):
     assert client.get(f"/api/applications/{r.json()['id']}/download").status_code == 200
 
 
-# ---------------------------------------------------------------- source viewer + manual edits
-def test_source_content_endpoint(client):
-    assert client.get("/api/source/content").status_code == 404
-    client.post("/api/source/upload", files={"file": ("cv.txt", RESUME)})
-    r = client.get("/api/source/content").json()
-    assert r["filename"] == "cv.txt" and r["text"].startswith("Jane Doe")
-
-
+# ---------------------------------------------------------------- manual edits
 def test_manual_edit_saves_cleans_and_stays_one_page(client):
     client.post("/api/source/upload", files={"file": ("cv.txt", RESUME)})
     aid = client.post("/api/applications", json={"text": JD}).json()["id"]
