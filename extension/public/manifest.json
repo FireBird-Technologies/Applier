@@ -16,6 +16,6 @@
   },
   "side_panel": { "default_path": "sidepanel.html" },
   "background": { "service_worker": "background.js", "type": "module" },
-  "permissions": ["identity", "storage", "scripting", "sidePanel", "tabs"],
+  "permissions": ["identity", "storage", "scripting", "sidePanel"],
   "host_permissions": ["<all_urls>"]
 }
