@@ -13,7 +13,7 @@ Same code, same migrations. Set `DATABASE_URL` in `backend/.env`:
 - Local: `sqlite:///./dev.db` (no server). The path resolves inside `backend/` wherever you start uvicorn from.
 - Production: `postgresql+psycopg2://user:pass@host/db` (`postgres://` and `postgresql://` URLs from hosts also work).
 - Migrations run automatically on startup for SQLite. For Postgres run `python -m alembic upgrade head` when you deploy
-  (or set `AUTO_MIGRATE=true` if you run a single worker).
+  (the deploy container does this for you).
 - Check what Postgres will get without a server: `DATABASE_URL=postgresql://u:p@h/db python -m alembic upgrade head --sql`.
 
 ## Run the backend
@@ -70,8 +70,8 @@ python -m scripts.update_email send-now 1    # run one batch now
 python -m scripts.update_email list | cancel <id>
 ```
 - Filters: `all`, `active` (>=1 applied), `inactive` (0), `exhausted` (used all free applications).
-- A scheduler in the API process wakes every 10 min and runs a campaign's batch in `UPDATE_EMAIL_SEND_HOUR` (UTC) once per day.
-  Disable with `UPDATE_EMAIL_SCHEDULER=false` on extra workers.
+- A scheduler in the API process wakes every 10 min and runs a campaign's batch at 09:00 UTC (a fixed default, `UPDATE_EMAIL_SEND_HOUR`) once per day.
+  Run a single API process (the Docker setup does), or the scheduler would run in each one.
 - Each recipient is claimed in `update_email_sends` before sending (unique per campaign+user), so nobody gets it twice.
 - Every email has a signed unsubscribe link plus `List-Unsubscribe` one-click headers. Set `PUBLIC_API_URL` to the public API origin.
 
@@ -79,15 +79,22 @@ python -m scripts.update_email list | cancel <id>
 Each extension install creates a random browser ID (kept in local and Chrome-sync storage) and sends it as `X-Device-Id`.
 The server stores only a keyed hash. The first account to sign in on a browser owns it; a second Google account on the same
 browser is refused before it is created, so it gets no free credits. One account can use several browsers.
-`REQUIRE_DEVICE_ID=true` by default. Limits: someone who reinstalls with sync off, or uses another Chrome profile, gets a new ID.
+The rule is always on (`REQUIRE_DEVICE_ID`, a fixed default in `app/config.py`). Limits: someone who reinstalls with sync off, or uses another Chrome profile, gets a new ID.
 Add an IP or phone check if that becomes a problem.
 
 ## Promo codes and pricing
 Promo codes use Stripe's own box on the checkout page. Create them in the Stripe dashboard (Coupons, then a promotion code).
-`STRIPE_ALLOW_PROMO_CODES=false` hides the box. A 100%-off code still grants the credits.
-All numbers come from env: `FREE_APPLICATIONS`, `PRICE_PER_APPLICATION_USD`, `MINIMUM_CHARGE_USD`, `SUGGESTED_CREDITS`,
-`MAX_CREDITS_PER_PURCHASE`. The extension gets them with the user's usage and the website reads the public `GET /api/pricing`
-(set `API_URL` in `web/.env.local`; pages refresh every 5 minutes). Restart the API after changing them.
+The promo-code box is always shown (`STRIPE_ALLOW_PROMO_CODES`, a fixed default). A 100%-off code still grants the credits.
+Three numbers are adjustable in `.env`: `FREE_APPLICATIONS`, `PRICE_PER_APPLICATION_USD` and `MINIMUM_CHARGE_USD`. The pack sizes
+(50/100/250/500) and the largest purchase (2000) are fixed defaults in `backend/app/config.py`. The extension gets all of them with
+the user's usage and the website reads the public `GET /api/pricing` (set `API_URL` in `web/.env.local`; pages refresh every
+5 minutes). Restart the API after changing `.env`.
+
+## Settings: what goes in `.env`
+`backend/app/config.py` has three labelled groups. **Required** (secrets and deployment values) and **adjustable** (pricing, AI
+models, email sender) are the only ones in `deploy/backend.env.production.example`. Everything else is a fixed default in
+`config.py`. The API refuses to start on Postgres without a real `JWT_SECRET`, and logs a warning for each other missing required
+setting.
 
 ## Editing resumes
 The pencil icon (tailored resume) and the eye icon (source resume) open a full-tab editor with Edit and Preview tabs.

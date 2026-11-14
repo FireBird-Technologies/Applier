@@ -11,14 +11,20 @@ from app.routers import applications, auth, billing, sources, unsubscribe
 from app.services.updates import scheduler_loop
 
 logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(__name__)
 if settings.RESEND_API_KEY and "example.com" in settings.EMAIL_FROM:
-    logging.getLogger(__name__).warning(
+    log.warning(
         "EMAIL_FROM (%s) uses example.com, which Resend rejects. Set it to an address on a verified domain.", settings.EMAIL_FROM
     )
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    fatal, warnings = settings.startup_problems()
+    for w in warnings:
+        log.warning(w)
+    if fatal:
+        raise RuntimeError(" ".join(fatal))  # better to stop now than to run with a guessable secret
     if settings.auto_migrate:
         await asyncio.to_thread(upgrade_to_head)
     task = asyncio.create_task(scheduler_loop()) if settings.UPDATE_EMAIL_SCHEDULER else None
@@ -47,4 +53,4 @@ app.include_router(unsubscribe.router)
 
 @app.get("/api/health")
 def health():
-    return {"ok": True, "env": settings.ENVIRONMENT, "model": settings.LLM_MODEL}
+    return {"ok": True, "model": settings.LLM_MODEL}
