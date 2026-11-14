@@ -2,6 +2,7 @@
 import { ApiError, api } from "../api/client";
 import type { SourceResume, Usage, User } from "../api/types";
 import { signInWithGoogle } from "../lib/auth";
+import { clearDetectCache } from "../lib/detectCache";
 import { clearToken, getToken } from "../lib/storage";
 import { BuyScreen } from "./BuyScreen";
 import { CreditsBanner, UsagePill } from "./Credits";
@@ -40,7 +41,7 @@ export function App() {
     setSigningIn(true); setError("");
     try { await signInWithGoogle(); await load(); } catch (e) { setError((e as Error).message); } finally { setSigningIn(false); }
   };
-  const signOut = async () => { await clearToken(); setUser(null); setSource(null); setView("main"); setStage("signed-out"); };
+  const signOut = async () => { await clearToken(); await clearDetectCache(); setUser(null); setSource(null); setView("main"); setStage("signed-out"); };
   const refreshUsage = useCallback(() => { api.me().then((m) => setUsage(m.usage)).catch(() => {}); }, []);
   const closeBuy = useCallback(() => setView("main"), []);
   const [scanTick, setScanTick] = useState(0);

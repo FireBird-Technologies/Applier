@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
 import type { Application, Detect, Format, PageData, Usage } from "../api/types";
+import { getCached, putDetect, putOverride } from "../lib/detectCache";
 import { readActiveTab } from "../lib/extract";
 import { DownloadBar } from "./DownloadBar";
 import { Feedback } from "./Feedback";
-import { ExpandIcon } from "./Icons";
+import { PencilIcon } from "./Icons";
 import { ResumePreview } from "./ResumePreview";
 import { EDIT_STEPS, TailoringLoader } from "./TailoringLoader";
 
@@ -39,11 +40,12 @@ export function JobScreen({ usage, onUsage, onBuy, scanTick = 0 }: Props) {
   const firstTick = useRef(true);
   useEffect(() => {
     if (firstTick.current) { firstTick.current = false; return; }
-    if (!busyRef.current) scan();  // never wipe a resume that is being generated or edited
+    if (!busyRef.current) scan(true);  // an explicit Scan always checks fresh; never wipe a resume being generated or edited
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scanTick]);
 
-  const scan = useCallback(async () => {
+  // `force` skips the remembered verdict. Automatic scans (opening the panel, switching tabs) use it; Scan and Rescan do not.
+  const scan = useCallback(async (force = false) => {
     abort.current?.abort(); // a newer scan supersedes any request still in flight
     const ac = new AbortController();
     abort.current = ac;
@@ -56,11 +58,20 @@ export function JobScreen({ usage, onUsage, onBuy, scanTick = 0 }: Props) {
     if (!p) return;
     setJd(p.text);
     if (ac.signal.aborted) return; // stopped while the page was being read
+    if (!force) {
+      const hit = await getCached(p.url);  // seen this page before: no AI call, no waiting
+      if (id !== scanId.current) return;
+      if (hit) {
+        setDet(hit.v); setTitle(hit.v.job_title); setCompany(hit.v.company); setOverride(hit.override ?? null);
+        return;
+      }
+    }
     setDetecting(true);
     try {
       const d = await api.detect(p, ac.signal);
       if (id !== scanId.current) return;
       setDet(d); setTitle(d.job_title); setCompany(d.company);
+      putDetect(p.url, d);  // remember it (verdicts from a half-loaded page are not kept)
     } catch (e) {
       if (id === scanId.current && !ac.signal.aborted) setError((e as Error).message);
     } finally {
@@ -81,13 +92,19 @@ export function JobScreen({ usage, onUsage, onBuy, scanTick = 0 }: Props) {
     return () => { clearTimeout(t); chrome.tabs.onActivated.removeListener(later); chrome.tabs.onUpdated.removeListener(onUpdated); };
   }, [scan]);
 
+  // The user's own answer is remembered for that page too, and wins over the detector's.
+  const choose = (v: boolean) => {
+    setOverride(v);
+    if (page) putOverride(page.url, v, det);
+  };
+
   const stopScan = () => {
     abort.current?.abort();
     setStopped(true);
     setDetecting(false);
   };
 
-  // The side panel cannot be resized by an extension, so Enlarge opens a full-tab editor instead.
+  // The side panel cannot be resized by an extension, so editing opens a full-tab editor instead.
   const openEditor = () => chrome.tabs.create({ url: chrome.runtime.getURL(`editor.html?id=${app!.id}`) });
 
   // The editor tab announces saves through storage; reload the resume it changed.
@@ -153,7 +170,7 @@ export function JobScreen({ usage, onUsage, onBuy, scanTick = 0 }: Props) {
           <div className="truncate font-medium">{page.title || host}</div>
           <div className="truncate text-gray-500">{host}</div>
         </div>
-        <button className="btn-ghost shrink-0 px-2 py-1 text-[12px]" onClick={scan} disabled={!!busy}>Rescan</button>
+        <button className="btn-ghost shrink-0 px-2 py-1 text-[12px]" onClick={() => scan(true)} disabled={!!busy}>Rescan</button>
       </div>
 
       {detecting && (
@@ -165,9 +182,9 @@ export function JobScreen({ usage, onUsage, onBuy, scanTick = 0 }: Props) {
 
       {!detecting && !app && !isJob && (
         <div className="space-y-3">
-          <p>{stopped ? "Scan stopped." : det ? `This doesn't look like a job posting. ${det.reason}` : "Couldn't check this page."}</p>
+          <p>{stopped ? "Scan stopped." : override === false ? "You marked this page as not a job." : det ? `This doesn't look like a job posting. ${det.reason}` : "Couldn't check this page."}</p>
           <p className="text-[12px] text-gray-500">Open a job posting and Applier detects it automatically.</p>
-          <button className="btn-ghost w-full" onClick={() => setOverride(true)}>This is a job page</button>
+          <button className="btn-ghost w-full" onClick={() => choose(true)}>This is a job page</button>
         </div>
       )}
 
@@ -178,7 +195,7 @@ export function JobScreen({ usage, onUsage, onBuy, scanTick = 0 }: Props) {
               <span className="inline-block h-1.5 w-1.5 rounded-full bg-black" />
               {override ? "Marked as a job page" : `Job detected (${Math.round((det?.confidence ?? 0) * 100)}%)`}
             </span>
-            <button className="text-[12px] text-gray-500 underline" onClick={() => setOverride(false)}>Not a job?</button>
+            <button className="text-[12px] text-gray-500 underline" onClick={() => choose(false)}>Not a job?</button>
           </div>
           <div><label className="label">Role</label><input className="field" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Job title" /></div>
           <div><label className="label">Company</label><input className="field" value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Company" /></div>
@@ -226,8 +243,8 @@ export function JobScreen({ usage, onUsage, onBuy, scanTick = 0 }: Props) {
             <div className="flex items-center justify-between">
               <label className="label mb-0">Preview (1 page)</label>
               <button className="p-1 text-gray-500 hover:text-black" onClick={openEditor}
-                aria-label="Enlarge and edit resume" title="Enlarge and edit">
-                <ExpandIcon size={18} />
+                aria-label="Edit resume" title="Edit resume">
+                <PencilIcon size={18} />
               </button>
             </div>
             <ResumePreview r={app.resume} />

@@ -16,6 +16,10 @@ export default function Privacy() {
         hints from the page&apos;s HTML (such as meta tags and whether an Apply button exists). It sends this to our server to decide whether the page
         is a job posting. If you navigate to another tab while the panel is open, it checks that page too. Close the panel and it reads nothing.
       </p>
+      <p>
+        To avoid checking the same page twice, the extension remembers on your device only whether pages you opened looked like job
+        postings (for up to 7 days, for at most 300 pages). This list is never sent to us and is cleared when you sign out.
+      </p>
       <p>The extension requests access to all sites for this reason. It does not read your browsing history, cookies, passwords or form entries.</p>
 
       <h2>What we store</h2>
