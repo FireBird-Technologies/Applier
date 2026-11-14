@@ -1,7 +1,7 @@
 ﻿import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -15,6 +15,7 @@ from app.routers.sources import active_source
 from app.schemas import ApplicationOut, DetectIn, DetectOut, EditIn, GenerateIn, TailoredResume
 from app.services import render
 from app.services.detect import detect
+from app.services.email import send_quota_used
 from app.services.usage import get_usage
 
 log = logging.getLogger(__name__)
@@ -108,6 +109,7 @@ def edit(app_id: int, body: EditIn, user: User = Depends(get_current_user), db: 
 @router.get("/applications/{app_id}/download")
 def download(
     app_id: int,
+    background: BackgroundTasks,
     format: str = Query("pdf", pattern="^(pdf|docx|md|txt)$"),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -119,6 +121,8 @@ def download(
         a.status = ApplicationStatus.APPLIED.value
         a.applied_at = datetime.now(timezone.utc).replace(tzinfo=None)
         db.commit()
+        if get_usage(db, user).paywalled:  # this download used the last free application
+            background.add_task(send_quota_used, user.email)
     data = render.render(TailoredResume.model_validate(a.resume), format)
     slug = "-".join(filter(None, [a.company, a.job_title])).lower().replace(" ", "-")[:60] or f"resume-{a.id}"
     return Response(

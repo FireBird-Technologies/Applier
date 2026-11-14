@@ -20,9 +20,12 @@ class Settings(BaseSettings):
     LLM_API_BASE: str = ""
     LLM_TEMPERATURE: float = 0.3
     LLM_MAX_TOKENS: int = 4000
+    # Extra provider params as JSON, e.g. {"thinking": {"type": "disabled"}} for GLM.
+    LLM_EXTRA_BODY: str = ""
     DETECT_LLM_MODEL: str = ""
     DETECT_LLM_API_KEY: str = ""
     DETECT_LLM_API_BASE: str = ""
+    DETECT_LLM_EXTRA_BODY: str = ""
 
     # Job-page detector: "jev" | "llm" | "auto" (jev when TYPESAFE_API_KEY is set, else llm).
     # If Jev errors at runtime the request falls back to the LLM.
@@ -30,6 +33,11 @@ class Settings(BaseSettings):
     TYPESAFE_API_KEY: str = ""
     JEV_MODEL: str = ""  # empty = SDK default; pin e.g. a versioned id for stable thresholds
     JEV_THRESHOLD: float = 0.5
+
+    # Email (Resend). Without RESEND_API_KEY emails are logged and skipped.
+    RESEND_API_KEY: str = ""
+    EMAIL_FROM: str = "Applier <noreply@example.com>"  # must be on a domain verified in Resend
+    EMAIL_REPLY_TO: str = ""
 
     FREE_APPLICATIONS: int = 10
     PRICE_PER_APPLICATION_USD: float = 0.10
