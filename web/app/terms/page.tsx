@@ -29,7 +29,7 @@ export default async function Terms() {
       <h2>Credits and payments</h2>
       <ul>
         <li>You start with {pricing.freeCredits} free applications.</li>
-        <li>An application is counted when you first download a tailored resume. Drafts, previews, edits and repeat downloads of the same resume do not use a credit.</li>
+        <li>A credit is used each time you generate a tailored resume. Editing it, undoing edits, previewing it and downloading it do not use another credit. If generation fails, no credit is used.</li>
         <li>Additional credits cost {money(pricing.perApplication)} each with a {money(pricing.minimumCharge)} minimum purchase. Payments are processed by Stripe.</li>
         <li>Prices for future purchases may change. The price you see at checkout is the price you pay.</li>
       </ul>

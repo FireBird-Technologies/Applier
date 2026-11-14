@@ -13,7 +13,7 @@ const steps = [
   { n: "01", title: "Sign in with Google", text: "One click in the side panel. No passwords to make or remember." },
   { n: "02", title: "Add your source resume", text: "Upload a PDF, DOCX, Markdown or text file, or paste it. This is the only place facts come from." },
   { n: "03", title: "Open a job posting", text: "Applier checks whether the page is a job and reads the description. Wrong guess? Override it, or stop the scan." },
-  { n: "04", title: "Generate, adjust, download", text: "Preview the tailored resume, ask for changes or edit by hand, then download. Downloading is what counts as applied." },
+  { n: "04", title: "Generate, adjust, download", text: "Preview the tailored resume, ask for changes or edit by hand as often as you like, then download it." },
 ];
 
 const makeFeatures = (pricing: Pricing) => [
@@ -82,7 +82,7 @@ export default async function Home() {
             <h2 className="text-3xl font-semibold" style={{ letterSpacing: "-0.03em" }}>Simple pricing</h2>
             <p className="text-neutral-600">
               {pricing.freeCredits} free applications. After that, {money(pricing.perApplication)} per application with a {money(pricing.minimumCharge)} minimum
-              purchase ({pricing.minimumCredits} credits). A credit is used only when you download, so drafts and edits cost nothing.
+              purchase ({pricing.minimumCredits} credits). A credit is used when a resume is generated. Edits and downloads after that are free and unlimited.
             </p>
             <Link href="/pricing" className="inline-block text-sm font-medium underline">See pricing details</Link>
           </div>

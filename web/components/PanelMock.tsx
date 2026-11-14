@@ -35,12 +35,12 @@ export function PanelMock() {
           <H>Skills</H>
           <Line w="78%" />
         </div>
-        <div className="grid grid-cols-4 gap-1.5">
+        <div className="flex gap-1.5">
           {["PDF", "DOCX", "MD", "TXT"].map((f) => (
-            <div key={f} className="rounded-md bg-black py-1.5 text-center text-[11px] font-medium text-white">{f}</div>
+            <div key={f} className="rounded-full bg-neutral-100 px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-neutral-600">{f}</div>
           ))}
         </div>
-        <div className="text-[11px] text-neutral-500">Downloading marks this job as applied and uses 1 credit.</div>
+        <div className="text-[11px] text-neutral-500">1 credit used. Edits and downloads are free.</div>
       </div>
     </div>
   );

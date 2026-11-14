@@ -2,11 +2,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
 import type { Application, Detect, Format, PageData, Usage } from "../api/types";
 import { readActiveTab } from "../lib/extract";
+import { DownloadBar } from "./DownloadBar";
 import { ExpandIcon } from "./Icons";
 import { ResumePreview } from "./ResumePreview";
 import { EDIT_STEPS, TailoringLoader } from "./TailoringLoader";
 
-const FORMATS: Format[] = ["pdf", "docx", "md", "txt"];
 
 interface Props {
   usage: Usage;
@@ -102,7 +102,10 @@ export function JobScreen({ usage, onUsage, onBuy }: Props) {
     try { await fn(); } catch (e) { setError((e as Error).message); } finally { setBusy(""); }
   };
 
-  const generate = () => run("generate", async () => setApp(await api.generate({ ...page!, text: jd }, title, company)));
+  const generate = () => run("generate", async () => {
+    setApp(await api.generate({ ...page!, text: jd }, title, company));
+    onUsage(); // generating is what spends the credit
+  });
   const edit = () => run("edit", async () => { setApp(await api.edit(app!.id, instruction)); setInstruction(""); });
   const undo = () => run("undo", async () => setApp(await api.undo(app!.id)));
   const download = (f: Format) => run(f, async () => {
@@ -184,6 +187,7 @@ export function JobScreen({ usage, onUsage, onBuy }: Props) {
               Generate tailored resume
             </button>
           )}
+          {!usage.paywalled && <p className="text-center text-[12px] text-gray-500">Uses 1 credit. Edits and downloads are free.</p>}
         </div>
       )}
 
@@ -231,18 +235,8 @@ export function JobScreen({ usage, onUsage, onBuy }: Props) {
 
           <div>
             <label className="label">Download</label>
-            <div className="grid grid-cols-4 gap-2">
-              {FORMATS.map((f) => (
-                <button key={f} className="btn-primary px-0 uppercase" disabled={!!busy} onClick={() => download(f)}>
-                  {busy === f ? "..." : f}
-                </button>
-              ))}
-            </div>
-            <p className="mt-2 text-[12px] text-gray-500">
-              {app.status === "applied"
-                ? "Counted as applied. Further downloads and edits are free."
-                : "Downloading marks this job as applied and uses 1 credit."}
-            </p>
+            <DownloadBar busy={busy} onDownload={download} />
+            <p className="mt-2 text-[12px] text-gray-500">1 credit used for this resume. Edits and downloads are free.</p>
           </div>
         </div>
       )}

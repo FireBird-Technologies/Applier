@@ -1,7 +1,7 @@
 ﻿# Applier
 
 Chrome extension: open a job posting, get a tailored resume (PDF / DOCX / MD / TXT).
-A job only counts as **applied** when you download the resume. First 10 applications are free.
+Generating a tailored resume spends 1 credit; editing and downloading it afterwards is free and unlimited. First 10 are free.
 
 Flow: Google sign-in -> source resume -> auto-detect job page (manual override) -> generate -> suggest edits -> download.
 
@@ -42,7 +42,7 @@ Google setup: create a **Web application** OAuth client and add
 Add a `key` to `public/manifest.json` so the ID stays stable across machines. Use the same client ID in both `.env` files.
 
 ## Credits and billing (Stripe)
-1 credit = 1 application (the first download of a tailored resume). Everyone gets `FREE_APPLICATIONS` (10) free;
+1 credit = 1 generated resume. The credit is spent when generation succeeds (and given back if the AI fails); edits, undo and downloads after that are free and unlimited. Everyone gets `FREE_APPLICATIONS` (10) free;
 purchased credits add to that. Pricing: `PRICE_PER_APPLICATION_USD` ($0.10 each), `MINIMUM_CHARGE_USD` ($3 = 30 credits minimum).
 The extension shows a meter: "moderate" once 50% is used, "low, upgrade now" at 20% left, then "out of credits".
 

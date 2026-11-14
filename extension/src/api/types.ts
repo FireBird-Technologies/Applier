@@ -1,7 +1,7 @@
 ﻿export interface User { id: number; email: string; name: string; picture: string }
 export type CreditLevel = "ok" | "moderate" | "low" | "empty";
 export interface Usage {
-  free_limit: number; paid_credits: number; total: number; applied: number; remaining: number;
+  free_limit: number; paid_credits: number; total: number; used: number; remaining: number;
   level: CreditLevel; paywalled: boolean;
   price_per_application_usd: number; minimum_charge_usd: number; min_credits: number;
   max_credits: number; suggested_credits: number[]; promo_codes?: boolean;

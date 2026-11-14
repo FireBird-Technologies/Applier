@@ -28,7 +28,7 @@ export default async function PricingPage() {
     <div className="mx-auto max-w-5xl px-6 pt-16 md:pt-24">
       <h1 className="text-4xl font-semibold md:text-5xl" style={{ letterSpacing: "-0.04em" }}>Pay only for applications you send</h1>
       <p className="mt-4 max-w-2xl text-neutral-600">
-        One credit is one application, counted when you first download a tailored resume. Drafts, previews and edits are free.
+        One credit is used each time you generate a tailored resume. Edits, undo, previews and downloads of it are free and unlimited.
       </p>
 
       <div className="mt-12 grid gap-6 md:grid-cols-2">

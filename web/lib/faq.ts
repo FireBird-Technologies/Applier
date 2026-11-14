@@ -31,7 +31,7 @@ export const getFaq = (pricing: Pricing): FaqItem[] => [
   {
     id: "credits",
     q: "What counts as an application?",
-    a: "An application is counted when you first download a tailored resume. Generating a draft, previewing it, editing it and re-downloading it are all free. One credit is one application.",
+    a: "One credit is used each time you generate a tailored resume. After that, everything on that resume is free and unlimited: asking for changes, editing by hand, undoing, previewing and downloading it in any format.",
   },
   {
     id: "pricing",
@@ -71,6 +71,6 @@ export const getFaq = (pricing: Pricing): FaqItem[] => [
   {
     id: "failures",
     q: "What if the AI request fails?",
-    a: "Credits are only used when you download, so a failed or poor draft costs nothing. Try again, ask for an edit, or fix it by hand.",
+    a: "If the AI request fails, nothing is charged: the credit is only kept once the resume is delivered. Edits are unlimited, so if a draft is not quite right, ask for changes or fix it by hand until it reads well.",
   },
 ];

@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
 import type { Application, Format, Resume, SourceDoc } from "../api/types";
+import { DownloadBar } from "../sidepanel/DownloadBar";
 import { Logo } from "../sidepanel/Logo";
 import { ResumePreview } from "../sidepanel/ResumePreview";
 import { EDIT_STEPS, PARSE_STEPS, TailoringLoader } from "../sidepanel/TailoringLoader";
 import { ResumeForm } from "./ResumeForm";
 
-const FORMATS: Format[] = ["pdf", "docx", "md", "txt"];
 const Label = ({ children }: { children: string }) => (
   <div className="mb-3 text-[11px] font-medium uppercase tracking-[0.14em] text-gray-400">{children}</div>
 );
@@ -197,16 +197,8 @@ export function EditorPage() {
           {!isSource && (
             <section>
               <Label>Download</Label>
-              <div className="grid grid-cols-4 gap-3">
-                {FORMATS.map((f) => (
-                  <button key={f} className="btn-primary py-4 text-[15px] uppercase" disabled={!!busy} onClick={() => download(f)}>
-                    {busy === f ? "..." : f}
-                  </button>
-                ))}
-              </div>
-              <p className="mt-3 text-[13px] text-gray-500">
-                {doc.applied ? "Counted as applied. More downloads and edits are free." : "Downloading marks this job as applied and uses 1 credit."}
-              </p>
+              <DownloadBar roomy busy={busy} onDownload={download} />
+              <p className="mt-3 text-[13px] text-gray-500">1 credit was used when this resume was generated. Edits and downloads are free and unlimited.</p>
             </section>
           )}
           <section>

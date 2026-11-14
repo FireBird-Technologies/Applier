@@ -5,7 +5,7 @@ export function UsagePill({ usage }: { usage: Usage }) {
   const heavy = usage.level === "low" || usage.level === "empty";
   const cls = heavy ? "bg-black text-white border-black" : usage.level === "moderate" ? "border-black" : "border-gray-200";
   return (
-    <span className={`rounded-full border px-2 py-0.5 font-mono text-[12px] ${cls}`} title={`${usage.applied} of ${usage.total} credits used`}>
+    <span className={`rounded-full border px-2 py-0.5 font-mono text-[12px] ${cls}`} title={`${usage.used} of ${usage.total} credits used`}>
       {usage.remaining}/{usage.total}
     </span>
   );
@@ -22,7 +22,7 @@ export function CreditsBanner({ usage, onBuy }: { usage: Usage; onBuy: () => voi
   if (usage.level === "ok") return null;
   const copy = COPY[usage.level];
   const solid = usage.level !== "moderate";
-  const used = Math.min(100, Math.round((usage.applied / Math.max(1, usage.total)) * 100));
+  const used = Math.min(100, Math.round((usage.used / Math.max(1, usage.total)) * 100));
   return (
     <div className={`mx-4 mt-4 rounded border p-3 ${solid ? "border-black bg-black text-white" : "border-black bg-white text-black"}`} role="status">
       <div className="flex items-center justify-between gap-3">
