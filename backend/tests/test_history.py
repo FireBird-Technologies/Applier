@@ -127,3 +127,47 @@ def test_history_is_private_and_deleted_with_the_resume(env):
         db.execute(delete(Application))  # plain SQL delete: the database's cascade must clear the history
         db.commit()
         assert db.scalars(select(ApplicationEdit)).all() == []
+
+
+def test_rating_a_generated_resume(env):
+    c, aid, _ = env
+    assert aid["feedback"] is None
+    r = c.put(f"/api/applications/{aid['id']}/feedback", json={"rating": "up"})
+    assert r.status_code == 200 and r.json()["feedback"] == "up"
+    assert c.put(f"/api/applications/{aid['id']}/feedback", json={"rating": "down"}).json()["feedback"] == "down"  # change of mind
+    assert c.get(f"/api/applications/{aid['id']}").json()["feedback"] == "down"  # persisted
+    assert c.get("/api/applications").json()[0]["feedback"] == "down"
+    cleared = c.put(f"/api/applications/{aid['id']}/feedback", json={"rating": None}).json()
+    assert cleared["feedback"] is None
+
+
+def test_rating_survives_edits_and_undo(env):
+    c, aid, _ = env
+    c.put(f"/api/applications/{aid['id']}/feedback", json={"rating": "up"})
+    edit(c, aid, "tweak")
+    assert c.post(f"/api/applications/{aid['id']}/undo").json()["feedback"] == "up"
+
+
+def test_rating_validation_and_privacy(env):
+    c, aid, _ = env
+    assert c.put(f"/api/applications/{aid['id']}/feedback", json={"rating": "meh"}).status_code == 422
+    assert c.put(f"/api/applications/{aid['id']}/feedback", json={}).status_code == 422
+    with SessionLocal() as db:
+        other = User(google_sub="g9", email="o@y.z")
+        db.add(other)
+        db.commit()
+        tok = create_access_token(other.id)
+    r = TestClient(app).put(f"/api/applications/{aid['id']}/feedback", json={"rating": "down"}, headers={"Authorization": f"Bearer {tok}"})
+    assert r.status_code == 404
+    assert c.get(f"/api/applications/{aid['id']}").json()["feedback"] is None  # untouched
+
+
+def test_feedback_report_script(env, capsys):
+    c, aid, _ = env
+    c.put(f"/api/applications/{aid['id']}/feedback", json={"rating": "down"})
+    from scripts.feedback import main
+    import sys
+    sys.argv = ["feedback"]
+    main()
+    out = capsys.readouterr().out
+    assert "rated: 1" in out and "thumbs down: 1" in out and f"#{aid['id']}" in out

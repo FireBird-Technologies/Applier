@@ -14,7 +14,7 @@ from app.models.application import Application, ApplicationEdit, ApplicationStat
 from app.models.source_resume import SourceResume
 from app.models.user import User
 from app.routers.sources import active_source
-from app.schemas import SECTIONS, ApplicationOut, DetectIn, DetectOut, EditIn, GenerateIn, ResumeIn, TailoredResume
+from app.schemas import SECTIONS, ApplicationOut, DetectIn, DetectOut, EditIn, FeedbackIn, GenerateIn, ResumeIn, TailoredResume
 from app.services import render
 from app.services.render import describe_trim, fit_to_one_page
 from app.services.detect import detect
@@ -32,7 +32,7 @@ def _out(a: Application) -> ApplicationOut:
         id=a.id, job_url=a.job_url, job_title=a.job_title, company=a.company, status=a.status,
         version=a.version, resume=TailoredResume.model_validate(a.resume),
         created_at=a.created_at, applied_at=a.applied_at,
-        can_undo=len(a.edits) > 1, last_edit=describe(a.edits[-1]) if len(a.edits) > 1 else "",
+        feedback=a.feedback, can_undo=len(a.edits) > 1, last_edit=describe(a.edits[-1]) if len(a.edits) > 1 else "",
     )
 
 
@@ -161,6 +161,16 @@ def edit(app_id: int, body: EditIn, user: User = Depends(get_current_user), db: 
     a.resume = fit_to_one_page(updated.model_copy(update={"section_order": layout})).model_dump()
     a.version += 1
     record(a, ApplicationEdit, "ai", body.instruction.strip())
+    db.commit()
+    return _out(a)
+
+
+@router.put("/applications/{app_id}/feedback", response_model=ApplicationOut)
+def rate(app_id: int, body: FeedbackIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Thumbs up or down on a generated resume. Sending null takes the rating back."""
+    a = _owned(db, user, app_id)
+    a.feedback = body.rating
+    a.feedback_at = utcnow() if body.rating else None
     db.commit()
     return _out(a)
 

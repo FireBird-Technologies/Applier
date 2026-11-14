@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -156,6 +157,10 @@ class ResumeIn(BaseModel):
     resume: TailoredResume
 
 
+class FeedbackIn(BaseModel):
+    rating: Literal["up", "down"] | None  # null clears the rating
+
+
 class EditIn(BaseModel):
     instruction: str = Field(min_length=3, max_length=2000)
 
@@ -173,3 +178,4 @@ class ApplicationOut(BaseModel):
     notice: str = ""  # e.g. what was trimmed to keep one page
     can_undo: bool = False
     last_edit: str = ""  # what Undo would revert, for the button tooltip
+    feedback: Literal["up", "down"] | None = None

@@ -23,6 +23,7 @@ export default function Privacy() {
         <li><b>Account:</b> your name, email address and profile picture from Google sign-in.</li>
         <li><b>Your resumes:</b> the text of your source resume and each tailored resume you generate.</li>
         <li><b>Applications:</b> for each resume you generate, the job page address, role, company and job description text, and whether you downloaded it.</li>
+        <li><b>Feedback:</b> the thumbs up or down you give a generated resume. We review it to improve how resumes are written.</li>
         <li><b>Browser ID:</b> a random identifier created by the extension for your browser install. We store only a keyed hash of it, to link each browser to one account and prevent free credits being claimed repeatedly.</li>
         <li><b>Usage and payments:</b> how many applications you have used, credits you bought, and a record of each purchase (amount, credits and Stripe session ID).</li>
       </ul>

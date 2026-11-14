@@ -29,6 +29,9 @@ class Application(Base):
     version: Mapped[int] = mapped_column(Integer, default=1)
     status: Mapped[str] = mapped_column(String(16), default=ApplicationStatus.DRAFT.value, index=True)
     applied_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # The user's verdict on the generated resume: "up" | "down" | None. Reviewed to improve the prompts.
+    feedback: Mapped[str | None] = mapped_column(String(4), nullable=True)
+    feedback_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     user = relationship("User", back_populates="applications")
