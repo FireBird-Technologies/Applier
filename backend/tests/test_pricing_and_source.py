@@ -5,6 +5,7 @@ os.environ["UPDATE_EMAIL_SCHEDULER"] = "false"
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
 import app.routers.applications as apps_router
 import app.routers.sources as sources_router
@@ -76,6 +77,7 @@ def test_source_doc_needs_a_source_then_parses_once(env):
     c, calls, _ = env
     assert c.get("/api/source/resume").status_code == 404
     c.post("/api/source/upload", files={"file": ("cv.txt", RESUME)})
+    assert calls["parse"] == 1  # parsed in the background as soon as it was uploaded
     d = c.get("/api/source/resume").json()
     assert d["filename"] == "cv.txt" and d["resume"]["name"] == "Jane Doe" and d["can_undo"] is False
     assert d["resume"]["section_order"] == ["summary", "skills", "experience", "projects", "education", "certifications"]
@@ -85,8 +87,8 @@ def test_source_doc_needs_a_source_then_parses_once(env):
 
 def test_parse_failure_is_a_clean_error(env, monkeypatch):
     c, _, _ = env
-    c.post("/api/source/upload", files={"file": ("cv.txt", RESUME)})
     monkeypatch.setattr(sources_router, "parse_resume", lambda t: (_ for _ in ()).throw(RuntimeError("llm down")))
+    assert c.post("/api/source/upload", files={"file": ("cv.txt", RESUME)}).status_code == 200  # the upload itself still works
     assert c.get("/api/source/resume").status_code == 502
 
 
@@ -135,3 +137,55 @@ def test_uploading_a_new_resume_starts_a_fresh_document(env):
     c.post("/api/source/upload", files={"file": ("b.txt", RESUME + b" more")})
     d = c.get("/api/source/resume").json()
     assert d["filename"] == "b.txt" and calls["parse"] == 2
+
+
+def test_background_failure_is_retried_when_the_editor_is_opened(env, monkeypatch):
+    c, calls, _ = env
+    good = sources_router.parse_resume
+    monkeypatch.setattr(sources_router, "parse_resume", lambda t: (_ for _ in ()).throw(RuntimeError("llm hiccup")))
+    c.post("/api/source/upload", files={"file": ("cv.txt", RESUME)})  # background parse fails quietly
+    monkeypatch.setattr(sources_router, "parse_resume", good)
+    d = c.get("/api/source/resume")  # opening it parses on demand
+    assert d.status_code == 200 and d.json()["resume"]["name"] == "Jane Doe" and calls["parse"] == 1
+
+
+def test_paste_also_prepares_the_editable_view(env):
+    c, calls, _ = env
+    assert c.post("/api/source/text", json={"text": RESUME.decode()}).status_code == 200
+    assert calls["parse"] == 1
+
+
+def test_opening_while_the_background_parse_runs_does_not_parse_twice(env, monkeypatch):
+    """The editor waits for the in-flight parse instead of starting a second AI call."""
+    import threading
+    import time
+
+    from app.models.source_resume import SourceResume
+
+    c, _, _ = env
+    c.post("/api/source/upload", files={"file": ("cv.txt", RESUME)})
+    with SessionLocal() as db:  # undo the parse so we can race two openers
+        s = db.scalar(select(SourceResume))
+        s.resume, s.edits[:] = None, []
+        db.commit()
+        sid = s.id
+    count = []
+
+    def slow_parse(text):
+        count.append(1)
+        time.sleep(0.4)
+        return TailoredResume(name="Slow")
+
+    monkeypatch.setattr(sources_router, "parse_resume", slow_parse)
+
+    def opener():
+        with SessionLocal() as db:
+            sources_router._ensure_parsed(db, db.get(SourceResume, sid))
+
+    threads = [threading.Thread(target=opener) for _ in range(3)]
+    [t.start() for t in threads]
+    [t.join() for t in threads]
+    assert len(count) == 1
+    with SessionLocal() as db:
+        s = db.get(SourceResume, sid)
+        assert s.resume["name"] == "Slow" and len(s.edits) == 1  # one baseline, not three

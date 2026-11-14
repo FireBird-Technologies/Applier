@@ -1,12 +1,13 @@
 import logging
+import threading
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
 from app.config import settings
-from app.database import get_db
+from app.database import SessionLocal, get_db
 from app.dspy_modules.modules import parse_resume, revise_resume
 from app.models.source_resume import SourceEdit, SourceResume
 from app.models.user import User
@@ -49,7 +50,9 @@ def get_source(user: User = Depends(get_current_user), db: Session = Depends(get
 
 
 @router.post("/upload", response_model=SourceResumeOut)
-async def upload(file: UploadFile = File(...), user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+async def upload(
+    background: BackgroundTasks, file: UploadFile = File(...), user: User = Depends(get_current_user), db: Session = Depends(get_db)
+):
     data = await file.read()
     if len(data) > MAX_UPLOAD:
         raise HTTPException(413, "File too large (max 5 MB)")
@@ -57,14 +60,18 @@ async def upload(file: UploadFile = File(...), user: User = Depends(get_current_
         text = extract_text(file.filename or "", data)
     except UnsupportedFile as e:
         raise HTTPException(400, str(e))
-    return _out(_save(db, user, file.filename or "resume", text))
+    s = _save(db, user, file.filename or "resume", text)
+    background.add_task(_parse_in_background, s.id)  # prepare the editable view now, so opening it later is instant
+    return _out(s)
 
 
 @router.post("/text", response_model=SourceResumeOut)
-def paste(body: SourceTextIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def paste(body: SourceTextIn, background: BackgroundTasks, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if len(body.text.strip()) < 80:
         raise HTTPException(400, "Resume text is too short")
-    return _out(_save(db, user, body.filename, body.text.strip()))
+    s = _save(db, user, body.filename, body.text.strip())
+    background.add_task(_parse_in_background, s.id)
+    return _out(s)
 
 
 # ---------------------------------------------------------------- the source resume as an editable document
@@ -82,18 +89,46 @@ def _active_or_404(db: Session, user: User) -> SourceResume:
     return s
 
 
+_parse_locks: dict[int, threading.Lock] = {}
+_parse_locks_guard = threading.Lock()
+
+
+def _parse_lock(source_id: int) -> threading.Lock:
+    with _parse_locks_guard:
+        return _parse_locks.setdefault(source_id, threading.Lock())
+
+
 def _ensure_parsed(db: Session, s: SourceResume) -> None:
-    """Turn the raw text into structured sections the first time it is viewed. Extraction only."""
+    """Turn the raw text into structured sections. Extraction only.
+
+    Normally this already happened in the background right after the upload. If the user opens the editor while that
+    is still running, this waits for it instead of paying for a second AI call."""
     if s.resume is not None:
         return
-    try:
-        parsed = parse_resume(s.text)
-    except Exception:
-        log.exception("Resume parsing failed")
-        raise HTTPException(502, "Could not read your resume into sections. Try again.")
-    s.resume = parsed.model_copy(update={"section_order": list(SECTIONS)}).model_dump()  # the model never picks the layout
-    s.edits.append(SourceEdit(kind="generate", resume=s.resume))
-    db.commit()
+    with _parse_lock(s.id):
+        db.refresh(s)  # the background task may have finished while we waited for the lock
+        if s.resume is not None:
+            return
+        try:
+            parsed = parse_resume(s.text)
+        except Exception:
+            log.exception("Resume parsing failed")
+            raise HTTPException(502, "Could not read your resume into sections. Try again.")
+        s.resume = parsed.model_copy(update={"section_order": list(SECTIONS)}).model_dump()  # the model never picks the layout
+        s.edits.append(SourceEdit(kind="generate", resume=s.resume))
+        db.commit()
+
+
+def _parse_in_background(source_id: int) -> None:
+    """Runs after the upload response is sent. A failure is fine: opening the editor retries it on demand."""
+    with SessionLocal() as db:
+        s = db.get(SourceResume, source_id)
+        if s is None:
+            return
+        try:
+            _ensure_parsed(db, s)
+        except Exception:
+            log.warning("Background resume parsing failed for source %s; it will be retried when opened", source_id)
 
 
 def _apply(s: SourceResume, resume: TailoredResume) -> None:
