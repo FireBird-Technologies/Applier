@@ -1,6 +1,6 @@
 /** Black & white only: no gradients, no shadows, hairline borders. */
 export default {
-  content: ["./sidepanel.html", "./src/**/*.{ts,tsx}"],
+  content: ["./sidepanel.html", "./editor.html", "./src/**/*.{ts,tsx}"],
   theme: {
     colors: {
       transparent: "transparent",

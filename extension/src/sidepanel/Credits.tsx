@@ -33,7 +33,7 @@ export function CreditsBanner({ usage, onBuy }: { usage: Usage; onBuy: () => voi
           </div>
         </div>
         <button onClick={onBuy}
-          className={`btn shrink-0 px-3 py-1.5 text-[12px] ${solid ? "border-white bg-white text-black hover:bg-gray-200" : "bg-black text-white hover:bg-gray-600"}`}>
+          className={`btn shrink-0 px-3 py-1.5 text-[12px] ${solid ? "border-transparent bg-white text-black hover:bg-gray-200" : "bg-black text-white hover:bg-gray-600"}`}>
           {copy.cta}
         </button>
       </div>

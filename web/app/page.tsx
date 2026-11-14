@@ -128,7 +128,7 @@ export default function Home() {
         <div className="space-y-5 rounded-lg bg-black p-10 text-center text-white md:p-14">
           <h2 className="text-3xl font-semibold md:text-4xl" style={{ letterSpacing: "-0.03em" }}>Your next application, tailored.</h2>
           <p className="mx-auto max-w-md text-neutral-400">Add Applier to Chrome and tailor your first {pricing.freeCredits} resumes free.</p>
-          <ButtonLink href={site.installUrl} external={site.installIsExternal} className="border-white bg-white px-5 py-3 text-black hover:bg-neutral-200">
+          <ButtonLink href={site.installUrl} external={site.installIsExternal} className="bg-white px-5 py-3 text-black hover:bg-neutral-200">
             Add to Chrome
           </ButtonLink>
         </div>

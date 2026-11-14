@@ -75,14 +75,14 @@ export function App() {
           <Logo />
           <div className="flex items-center gap-2">
             {usage && <UsagePill usage={usage} />}
-            <button className="btn-primary px-2.5 py-1 text-[12px]" onClick={buy}>Buy credits</button>
+            <button className="text-[12px] font-medium underline-offset-2 hover:underline" onClick={buy}>Buy credits</button>
           </div>
         </div>
         <div className="flex items-center gap-3 text-[12px] text-gray-500">
           {source && (
             <span className="inline-flex items-center gap-1">
               <button className="hover:text-black" onClick={() => setView("source")}>Resume</button>
-              <button className="rounded p-1 hover:bg-gray-100 hover:text-black" onClick={() => setViewingSource(true)}
+              <button className="p-1 hover:text-black" onClick={() => setViewingSource(true)}
                 aria-label="View source resume" title="View source resume"><EyeIcon size={15} /></button>
             </span>
           )}

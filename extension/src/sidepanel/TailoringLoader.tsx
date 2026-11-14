@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { LogoMark } from "./Logo";
 
-const STEPS = [
+export const TAILOR_STEPS = [
   "Reading the job description",
   "Matching it to your experience",
   "Picking the strongest achievements",
@@ -9,8 +9,22 @@ const STEPS = [
   "Polishing the final resume",
 ];
 
-/** Full-panel loading state shown while the tailored resume is generated. */
-export function TailoringLoader({ title, company }: { title: string; company: string }) {
+export const EDIT_STEPS = [
+  "Reading your request",
+  "Rewriting the resume",
+  "Checking it still fits one page",
+];
+
+interface Props {
+  title: string;
+  company: string;
+  steps?: string[];
+  verb?: string; // "Tailoring for <role>" / "Editing <role>"
+  hint?: string;
+}
+
+/** Full-panel loading state shown while the AI works (tailoring a resume, or applying an edit). */
+export function TailoringLoader({ title, company, steps = TAILOR_STEPS, verb = "Tailoring for", hint = "Usually takes 10 to 30 seconds. Keep this panel open." }: Props) {
   const [step, setStep] = useState(0);
   const [seconds, setSeconds] = useState(0);
 
@@ -19,7 +33,7 @@ export function TailoringLoader({ title, company }: { title: string; company: st
     return () => clearInterval(t);
   }, []);
   useEffect(() => {
-    const t = setInterval(() => setStep((s) => Math.min(s + 1, STEPS.length - 1)), 3500);
+    const t = setInterval(() => setStep((s) => Math.min(s + 1, steps.length - 1)), 3500);
     return () => clearInterval(t);
   }, []);
 
@@ -34,14 +48,14 @@ export function TailoringLoader({ title, company }: { title: string; company: st
           <div className="loader-bar" />
         </div>
         <div key={step} className="fade-in text-[14px] font-medium tracking-tight">
-          {STEPS[step]}
+          {steps[step]}
         </div>
         <div className="font-mono text-[11px] text-gray-500">{seconds}s</div>
       </div>
 
       <div className="space-y-1">
-        {target && <div className="max-w-[260px] truncate text-[12px] text-gray-500">Tailoring for {target}</div>}
-        <div className="text-[12px] text-gray-400">Usually takes 10 to 30 seconds. Keep this panel open.</div>
+        {target && <div className="max-w-[260px] truncate text-[12px] text-gray-500">{verb} {target}</div>}
+        <div className="text-[12px] text-gray-400">{hint}</div>
       </div>
     </div>
   );

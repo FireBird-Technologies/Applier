@@ -3,9 +3,8 @@ import { api } from "../api/client";
 import type { Application, Detect, Format, PageData, Usage } from "../api/types";
 import { readActiveTab } from "../lib/extract";
 import { ExpandIcon } from "./Icons";
-import { ResumeEditor } from "./ResumeEditor";
 import { ResumePreview } from "./ResumePreview";
-import { TailoringLoader } from "./TailoringLoader";
+import { EDIT_STEPS, TailoringLoader } from "./TailoringLoader";
 
 const FORMATS: Format[] = ["pdf", "docx", "md", "txt"];
 
@@ -27,7 +26,6 @@ export function JobScreen({ usage, onUsage, onBuy }: Props) {
   const [app, setApp] = useState<Application | null>(null);
   const [busy, setBusy] = useState<"" | "generate" | "edit" | Format>("");
   const [instruction, setInstruction] = useState("");
-  const [editing, setEditing] = useState(false); // enlarged manual editor open
   const [error, setError] = useState("");
   const scanId = useRef(0);
   const abort = useRef<AbortController | null>(null);
@@ -78,6 +76,24 @@ export function JobScreen({ usage, onUsage, onBuy }: Props) {
     setDetecting(false);
   };
 
+  // The side panel cannot be resized by an extension, so Enlarge opens a full-tab editor instead.
+  const openEditor = () => chrome.tabs.create({ url: chrome.runtime.getURL(`editor.html?id=${app!.id}`) });
+
+  // The editor tab announces saves through storage; reload the resume it changed.
+  const appId = app?.id;
+  useEffect(() => {
+    if (!appId) return;
+    const onChanged = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
+      const saved = changes.applier_resume_saved?.newValue;
+      if (area === "local" && saved?.id === appId) {
+        api.getApplication(appId).then((a) => setApp({ ...a, notice: saved.notice || "" })).catch(() => {});
+        onUsage(); // the editor tab may have downloaded, which uses a credit
+      }
+    };
+    chrome.storage.onChanged.addListener(onChanged);
+    return () => chrome.storage.onChanged.removeListener(onChanged);
+  }, [appId, onUsage]);
+
   const isJob = override ?? det?.is_job ?? false;
   const host = page ? new URL(page.url).hostname : "";
 
@@ -96,6 +112,9 @@ export function JobScreen({ usage, onUsage, onBuy }: Props) {
 
   // While tailoring, replace the whole form with the loading screen.
   if (busy === "generate") return <TailoringLoader title={title} company={company} />;
+  if (busy === "edit" && app) {
+    return <TailoringLoader title={app.job_title} company={app.company} steps={EDIT_STEPS} verb="Editing" hint="Usually just a few seconds. Keep this panel open." />;
+  }
 
   if (page === undefined) {
     return (
@@ -182,8 +201,9 @@ export function JobScreen({ usage, onUsage, onBuy }: Props) {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="label mb-0">Preview (1 page)</label>
-              <button className="btn-ghost gap-1.5 px-2.5 py-1 text-[12px]" onClick={() => setEditing(true)} aria-label="Enlarge and edit resume">
-                <ExpandIcon /> Enlarge &amp; edit
+              <button className="p-1 text-gray-500 hover:text-black" onClick={openEditor}
+                aria-label="Enlarge and edit resume" title="Enlarge and edit">
+                <ExpandIcon size={18} />
               </button>
             </div>
             <ResumePreview r={app.resume} />
@@ -220,11 +240,6 @@ export function JobScreen({ usage, onUsage, onBuy }: Props) {
       )}
 
       {error && <p className="border-l-2 border-black pl-2">{error}</p>}
-
-      {editing && app && (
-        <ResumeEditor app={app} onClose={() => setEditing(false)}
-          onSaved={(saved) => { setApp(saved); setEditing(false); }} />
-      )}
     </div>
   );
 }

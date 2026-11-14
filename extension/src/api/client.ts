@@ -38,6 +38,7 @@ const post = <T,>(p: string, body: unknown) => json<T>(p, { method: "POST", body
 export const api = {
   loginWithGoogle: (credential: string) => post<AuthOut>("/api/auth/google", { credential }),
   me: () => json<AuthOut>("/api/auth/me"),
+  getApplication: (id: number) => json<Application>(`/api/applications/${id}`),
   getSource: () => json<SourceResume | null>("/api/source"),
   uploadSource: (file: File) => {
     const fd = new FormData();

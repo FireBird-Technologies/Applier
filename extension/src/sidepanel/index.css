@@ -9,9 +9,9 @@ body { margin: 0; font-size: 13px; line-height: 1.45; }
 ::selection { background: #000; color: #fff; }
 
 @layer components {
-  .btn { @apply inline-flex items-center justify-center gap-2 rounded border border-black px-3 py-2 text-[13px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40; }
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded border border-transparent px-3 py-2 text-[13px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40; }
   .btn-primary { @apply btn bg-black text-white hover:bg-gray-600; }
-  .btn-ghost { @apply btn bg-white text-black hover:bg-gray-100; }
+  .btn-ghost { @apply btn bg-gray-100 text-black hover:bg-gray-200; }
   .field { @apply w-full rounded border border-gray-200 bg-white px-3 py-2 text-[13px] outline-none placeholder:text-gray-400 focus:border-black; }
   .label { @apply mb-1 block text-[11px] font-medium uppercase tracking-wider text-gray-500; }
   .card { @apply rounded border border-gray-200 p-3; }
@@ -36,3 +36,11 @@ body { margin: 0; font-size: 13px; line-height: 1.45; }
 @media (prefers-reduced-motion: reduce) {
   .tick-circle, .tick-check { animation: none; stroke-dashoffset: 0; }
 }
+
+/* Credit slider: gray track, solid black thumb. No gradients. */
+.range { -webkit-appearance: none; appearance: none; width: 100%; height: 20px; background: transparent; cursor: pointer; }
+.range:focus-visible { outline: 2px solid #000; outline-offset: 4px; border-radius: 9999px; }
+.range::-webkit-slider-runnable-track { height: 4px; background: #e5e5e5; border-radius: 9999px; }
+.range::-moz-range-track { height: 4px; background: #e5e5e5; border-radius: 9999px; }
+.range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; margin-top: -7px; border-radius: 9999px; background: #000; border: 2px solid #fff; box-shadow: 0 0 0 1px #000; }
+.range::-moz-range-thumb { width: 14px; height: 14px; border-radius: 9999px; background: #000; border: 2px solid #fff; box-shadow: 0 0 0 1px #000; }

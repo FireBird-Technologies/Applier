@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
+from app.migrate import upgrade_to_head
 from app.routers import applications, auth, billing, sources, unsubscribe
 from app.services.updates import scheduler_loop
 
@@ -14,6 +15,8 @@ logging.basicConfig(level=logging.INFO)
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    if settings.auto_migrate:
+        await asyncio.to_thread(upgrade_to_head)
     task = asyncio.create_task(scheduler_loop()) if settings.UPDATE_EMAIL_SCHEDULER else None
     yield
     if task:

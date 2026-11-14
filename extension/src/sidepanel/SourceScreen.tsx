@@ -60,8 +60,8 @@ export function SourceScreen({ current, onSaved, onView, onCancel }: Props) {
             <div className="truncate font-medium">{current.filename}</div>
             <div className="text-gray-500">{current.chars.toLocaleString()} characters</div>
           </div>
-          <button className="btn-ghost shrink-0 gap-1.5 px-2.5 py-1.5 text-[12px]" onClick={onView} aria-label="View source resume" title="View source resume">
-            <EyeIcon /> View
+          <button className="shrink-0 p-1 text-gray-500 hover:text-black" onClick={onView} aria-label="View source resume" title="View source resume">
+            <EyeIcon size={18} />
           </button>
         </div>
       )}
@@ -79,7 +79,7 @@ export function SourceScreen({ current, onSaved, onView, onCancel }: Props) {
         <>
           <input ref={file} type="file" accept=".pdf,.docx,.md,.txt" className="hidden"
             onChange={(e) => e.target.files?.[0] && run(() => api.uploadSource(e.target.files![0]))} />
-          <button className="flex w-full flex-col items-center gap-1 rounded border border-dashed border-gray-400 py-8 hover:border-black" disabled={busy}
+          <button className="flex w-full flex-col items-center gap-1 rounded border border-dashed border-gray-400 py-8 hover:bg-gray-100" disabled={busy}
             onClick={() => file.current?.click()}>
             <span className="font-medium">{busy ? "Reading..." : "Choose a file"}</span>
             <span className="text-gray-500">PDF, DOCX, MD or TXT, up to 5 MB</span>

@@ -4,12 +4,12 @@ const H = ({ children }: { children: string }) => (
   <h4 className="mb-1 mt-3 border-b border-black pb-0.5 text-[10.5px] font-semibold uppercase tracking-wider">{children}</h4>
 );
 const Bullets = ({ items }: { items: string[] }) =>
-  items.length ? <ul className="ml-4 list-disc text-[12px] text-gray-600">{items.map((b, i) => <li key={i}>{b}</li>)}</ul> : null;
+  items.length ? <ul className="ml-4 list-disc text-gray-600">{items.map((b, i) => <li key={i}>{b}</li>)}</ul> : null;
 
-export function ResumePreview({ r }: { r: Resume }) {
+export function ResumePreview({ r, full = false }: { r: Resume; full?: boolean }) {
   return (
-    <div className="card max-h-[340px] overflow-y-auto text-[12px]">
-      <div className="text-[15px] font-semibold tracking-tight">{r.name}</div>
+    <div className={`card ${full ? "p-10 text-[13px]" : "max-h-[340px] overflow-y-auto text-[12px]"}`}>
+      <div className={`${full ? "text-[22px]" : "text-[15px]"} font-semibold tracking-tight`}>{r.name}</div>
       {r.headline && <div>{r.headline}</div>}
       {r.contact.length > 0 && <div className="text-gray-500">{r.contact.join("  |  ")}</div>}
       {r.summary && (<><H>Summary</H><p className="text-gray-600">{r.summary}</p></>)}

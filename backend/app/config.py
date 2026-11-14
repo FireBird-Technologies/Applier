@@ -1,4 +1,9 @@
+from pathlib import Path
+
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+BACKEND_DIR = Path(__file__).resolve().parent.parent
 
 
 class Settings(BaseSettings):
@@ -6,6 +11,9 @@ class Settings(BaseSettings):
 
     ENVIRONMENT: str = "local"
     DATABASE_URL: str = "postgresql+psycopg2://applier:applier@localhost:5432/applier"
+    # Run `alembic upgrade head` when the API starts. Default (unset): on for SQLite, off for Postgres
+    # (deploy with an explicit `alembic upgrade head` so several workers never migrate at once).
+    AUTO_MIGRATE: bool | None = None
     CORS_ORIGINS: str = "chrome-extension://*"
 
     JWT_SECRET: str = "change-me"
@@ -55,6 +63,28 @@ class Settings(BaseSettings):
 
     MAX_SOURCE_CHARS: int = 30000
     MAX_JOB_CHARS: int = 12000
+
+
+    @field_validator("DATABASE_URL")
+    @classmethod
+    def _portable_url(cls, v: str) -> str:
+        """Accept the URL forms hosts hand out, and don't let SQLite depend on the working directory."""
+        for prefix in ("postgres://", "postgresql://"):  # SQLAlchemy needs an explicit driver
+            if v.startswith(prefix):
+                v = "postgresql+psycopg2://" + v[len(prefix):]
+        if v.startswith("sqlite:///") and not v.startswith("sqlite:////") and ":memory:" not in v:
+            rel = v[len("sqlite:///"):]
+            if rel and not Path(rel).is_absolute():  # sqlite:///./dev.db -> <backend>/dev.db wherever you start from
+                v = "sqlite:///" + (BACKEND_DIR / rel).as_posix()
+        return v
+
+    @property
+    def is_sqlite(self) -> bool:
+        return self.DATABASE_URL.startswith("sqlite")
+
+    @property
+    def auto_migrate(self) -> bool:
+        return self.is_sqlite if self.AUTO_MIGRATE is None else self.AUTO_MIGRATE
 
 
 settings = Settings()

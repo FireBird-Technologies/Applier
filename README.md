@@ -9,6 +9,14 @@ Flow: Google sign-in -> source resume -> auto-detect job page (manual override) 
 - `backend/`: FastAPI, SQLAlchemy + Alembic, Postgres (integer IDs), DSPy (LiteLLM), JWT
 - `extension/`: Manifest V3 side panel, Vite + React + Tailwind, Geist (bundled), black/white only
 
+## Database: SQLite locally, Postgres in production
+Same code, same migrations. Set `DATABASE_URL` in `backend/.env`:
+- Local: `sqlite:///./dev.db` (no server). The path resolves inside `backend/` wherever you start uvicorn from.
+- Production: `postgresql+psycopg2://user:pass@host/db` (`postgres://` and `postgresql://` URLs from hosts also work).
+- Migrations run automatically on startup for SQLite. For Postgres run `python -m alembic upgrade head` when you deploy
+  (or set `AUTO_MIGRATE=true` if you run a single worker).
+- Check what Postgres will get without a server: `DATABASE_URL=postgresql://u:p@h/db python -m alembic upgrade head --sql`.
+
 ## Run the backend
 ```bash
 docker compose up -d db
@@ -67,3 +75,13 @@ python -m scripts.update_email list | cancel <id>
   Disable with `UPDATE_EMAIL_SCHEDULER=false` on extra workers.
 - Each recipient is claimed in `update_email_sends` before sending (unique per campaign+user), so nobody gets it twice.
 - Every email has a signed unsubscribe link plus `List-Unsubscribe` one-click headers. Set `PUBLIC_API_URL` to the public API origin.
+
+## Website (Next.js)
+`web/` is the marketing site: home, pricing, FAQ, blog, privacy and terms, in the same black-and-white Geist style.
+```bash
+cd web && cp .env.example .env.local   # NEXT_PUBLIC_SITE_URL, NEXT_PUBLIC_CHROME_STORE_URL, NEXT_PUBLIC_SUPPORT_EMAIL
+npm install && npm run dev             # http://localhost:3000
+npm run build && npm start             # production
+```
+Copy lives in `web/lib` (`site.ts` pricing and links, `faq.ts`, `posts.ts`). Until `NEXT_PUBLIC_CHROME_STORE_URL` is set,
+"Add to Chrome" points at the install steps in the FAQ. Keep the pricing constants in `site.ts` in sync with the backend settings.
