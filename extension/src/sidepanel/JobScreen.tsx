@@ -1,0 +1,173 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import { api } from "../api/client";
+import type { Application, Detect, Format, PageData, Usage } from "../api/types";
+import { readActiveTab } from "../lib/extract";
+import { ResumePreview } from "./ResumePreview";
+
+const FORMATS: Format[] = ["pdf", "docx", "md", "txt"];
+
+interface Props {
+  usage: Usage;
+  onUsage: () => void;
+}
+
+export function JobScreen({ usage, onUsage }: Props) {
+  const [page, setPage] = useState<PageData | null | undefined>(undefined); // undefined = scanning, null = unreadable
+  const [det, setDet] = useState<Detect | null>(null);
+  const [detecting, setDetecting] = useState(false);
+  const [override, setOverride] = useState<boolean | null>(null); // user's manual "is a job" answer
+  const [title, setTitle] = useState("");
+  const [company, setCompany] = useState("");
+  const [app, setApp] = useState<Application | null>(null);
+  const [busy, setBusy] = useState<"" | "generate" | "edit" | Format>("");
+  const [instruction, setInstruction] = useState("");
+  const [error, setError] = useState("");
+  const scanId = useRef(0);
+  const busyRef = useRef(busy);
+  busyRef.current = busy;
+
+  const scan = useCallback(async () => {
+    const id = ++scanId.current;
+    setPage(undefined); setDet(null); setOverride(null); setApp(null); setError(""); setTitle(""); setCompany("");
+    const p = await readActiveTab();
+    if (id !== scanId.current) return;
+    setPage(p);
+    if (!p) return;
+    setDetecting(true);
+    try {
+      const d = await api.detect(p);
+      if (id !== scanId.current) return;
+      setDet(d); setTitle(d.job_title); setCompany(d.company);
+    } catch (e) {
+      if (id === scanId.current) setError((e as Error).message);
+    } finally {
+      if (id === scanId.current) setDetecting(false);
+    }
+  }, []);
+
+  // Rescan on open and whenever the active tab or its URL changes (debounced; never mid-generation).
+  useEffect(() => {
+    let t: ReturnType<typeof setTimeout>;
+    const later = () => { clearTimeout(t); t = setTimeout(() => { if (!busyRef.current) scan(); }, 600); };
+    const onUpdated = (_: number, info: chrome.tabs.TabChangeInfo, tab: chrome.tabs.Tab) => {
+      if (tab.active && (info.url || info.status === "complete")) later();
+    };
+    scan();
+    chrome.tabs.onActivated.addListener(later);
+    chrome.tabs.onUpdated.addListener(onUpdated);
+    return () => { clearTimeout(t); chrome.tabs.onActivated.removeListener(later); chrome.tabs.onUpdated.removeListener(onUpdated); };
+  }, [scan]);
+
+  const isJob = override ?? det?.is_job ?? false;
+  const host = page ? new URL(page.url).hostname : "";
+
+  const run = async (kind: typeof busy, fn: () => Promise<void>) => {
+    setBusy(kind); setError("");
+    try { await fn(); } catch (e) { setError((e as Error).message); } finally { setBusy(""); }
+  };
+
+  const generate = () => run("generate", async () => setApp(await api.generate(page!, title, company)));
+  const edit = () => run("edit", async () => { setApp(await api.edit(app!.id, instruction)); setInstruction(""); });
+  const download = (f: Format) => run(f, async () => {
+    await api.download(app!.id, f);
+    setApp({ ...app!, status: "applied" });
+    onUsage();
+  });
+
+  if (page === undefined) return <Status>Reading page...</Status>;
+  if (page === null) return <Status>This page can't be read. Open a job posting in a normal tab.</Status>;
+
+  return (
+    <div className="space-y-4">
+      <div className="card flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="label">Current page</div>
+          <div className="truncate font-medium">{page.title || host}</div>
+          <div className="truncate text-gray-500">{host}</div>
+        </div>
+        <button className="btn-ghost shrink-0 px-2 py-1 text-[12px]" onClick={scan} disabled={!!busy}>Rescan</button>
+      </div>
+
+      {detecting && <Status>Checking if this is a job posting...</Status>}
+
+      {!detecting && !app && !isJob && (
+        <div className="space-y-3">
+          <p>{det ? `This doesn't look like a job posting. ${det.reason}` : "Couldn't check this page."}</p>
+          <button className="btn-ghost w-full" onClick={() => setOverride(true)}>This is a job page</button>
+        </div>
+      )}
+
+      {!detecting && !app && isJob && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="inline-flex items-center gap-1.5 text-[12px] font-medium">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-black" />
+              {override ? "Marked as a job page" : `Job detected (${Math.round((det?.confidence ?? 0) * 100)}%)`}
+            </span>
+            <button className="text-[12px] text-gray-500 underline" onClick={() => setOverride(false)}>Not a job?</button>
+          </div>
+          <div><label className="label">Role</label><input className="field" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Job title" /></div>
+          <div><label className="label">Company</label><input className="field" value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Company" /></div>
+          {usage.paywalled ? (
+            <p className="border-l-2 border-black pl-2">
+              You've used all {usage.free_limit} free applications. Paid plans are coming soon: ${usage.price_per_application_usd.toFixed(2)} per
+              application, ${usage.minimum_charge_usd.toFixed(2)} minimum.
+            </p>
+          ) : (
+            <button className="btn-primary w-full" disabled={!!busy || page.text.length < 100} onClick={generate}>
+              {busy === "generate" ? "Tailoring your resume..." : "Generate tailored resume"}
+            </button>
+          )}
+          {busy === "generate" && <div className="h-0.5 w-full animate-pulse bg-black" />}
+        </div>
+      )}
+
+      {app && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="min-w-0">
+              <div className="truncate font-medium">{app.job_title || "Tailored resume"}</div>
+              <div className="truncate text-gray-500">{app.company}</div>
+            </div>
+            <span className={`rounded-full border border-black px-2 py-0.5 text-[11px] font-medium ${app.status === "applied" ? "bg-black text-white" : ""}`}>
+              {app.status === "applied" ? "Applied" : "Draft"}
+            </span>
+          </div>
+
+          <ResumePreview r={app.resume} />
+
+          <div>
+            <label className="label">Suggest an edit</label>
+            <div className="flex gap-2">
+              <input className="field" value={instruction} placeholder="e.g. Shorten the summary" disabled={!!busy}
+                onChange={(e) => setInstruction(e.target.value)} onKeyDown={(e) => e.key === "Enter" && instruction.trim().length > 2 && edit()} />
+              <button className="btn-ghost shrink-0" disabled={!!busy || instruction.trim().length < 3} onClick={edit}>
+                {busy === "edit" ? "..." : "Apply"}
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="label">Download</label>
+            <div className="grid grid-cols-4 gap-2">
+              {FORMATS.map((f) => (
+                <button key={f} className="btn-primary px-0 uppercase" disabled={!!busy} onClick={() => download(f)}>
+                  {busy === f ? "..." : f}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-[12px] text-gray-500">
+              {app.status === "applied"
+                ? "Counted as applied. Further downloads and edits are free."
+                : "Downloading marks this job as applied and uses 1 of your free applications."}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {error && <p className="border-l-2 border-black pl-2">{error}</p>}
+    </div>
+  );
+}
+
+const Status = ({ children }: { children: React.ReactNode }) => <p className="py-6 text-center text-gray-500">{children}</p>;
