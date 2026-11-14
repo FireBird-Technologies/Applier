@@ -1,0 +1,23 @@
+# Production: just the API. The database is hosted (see DATABASE_URL), and nginx on the droplet adds HTTPS.
+#
+#   docker compose -f docker-compose.prod.yml up -d --build      start / update
+#   docker compose -f docker-compose.prod.yml logs -f            watch the logs
+#   docker compose -f docker-compose.prod.yml down               stop
+#
+# Settings come from backend/.env on the server (never committed). See deploy/backend.env.production.example.
+name: applier
+
+services:
+  applier-api:
+    build: ./backend
+    container_name: applier-api
+    restart: unless-stopped
+    env_file: ./backend/.env
+    ports:
+      - "127.0.0.1:8001:8000"  # reachable only from this server: nginx forwards applier.site to it
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
