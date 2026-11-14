@@ -68,7 +68,7 @@ class UsageOut(BaseModel):
     free_limit: int
     paid_credits: int
     total: int  # free + purchased
-    applied: int
+    used: int  # credits spent: resumes generated
     remaining: int
     level: str  # ok | moderate | low | empty
     paywalled: bool
@@ -77,6 +77,7 @@ class UsageOut(BaseModel):
     min_credits: int
     max_credits: int
     suggested_credits: list[int]
+    promo_codes: bool = False  # Stripe Checkout shows a promotion code box
 
 
 class PricingOut(BaseModel):
@@ -86,6 +87,7 @@ class PricingOut(BaseModel):
     min_credits: int
     max_credits: int
     suggested_credits: list[int]
+    promo_codes: bool = False
 
 
 class CheckoutIn(BaseModel):

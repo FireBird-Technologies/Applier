@@ -1,7 +1,7 @@
 import { API_URL } from "../config";
 import { getDeviceId } from "../lib/device";
 import { clearToken, getToken } from "../lib/storage";
-import type { Application, AuthOut, Detect, Format, PageData, Resume, SourceResume } from "./types";
+import type { Application, AuthOut, Detect, Format, PageData, Resume, SourceDoc, SourceResume } from "./types";
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -47,7 +47,11 @@ export const api = {
     fd.append("file", file);
     return json<SourceResume>("/api/source/upload", { method: "POST", body: fd });
   },
-  getSourceContent: () => json<{ filename: string; text: string }>("/api/source/content"),
+  // The source resume as an editable document (parsed into sections the first time it is opened).
+  getSourceDoc: () => json<SourceDoc>("/api/source/resume"),
+  saveSourceDoc: (resume: Resume) => json<SourceDoc>("/api/source/resume", { method: "PUT", body: JSON.stringify({ resume }) }),
+  editSourceDoc: (instruction: string) => post<SourceDoc>("/api/source/resume/edit", { instruction }),
+  undoSourceDoc: () => post<SourceDoc>("/api/source/resume/undo", {}),
   pasteSource: (text: string) => post<SourceResume>("/api/source/text", { text }),
   detect: (p: PageData, signal?: AbortSignal) =>
     json<Detect>("/api/detect", {

@@ -39,6 +39,11 @@ export const getFaq = (pricing: Pricing): FaqItem[] => [
     a: `Your first ${pricing.freeCredits} applications are free. After that, credits cost ${money(pricing.perApplication)} each with a ${money(pricing.minimumCharge)} minimum purchase (${pricing.minimumCredits} credits). There is no subscription. Payments are handled by Stripe.`,
   },
   {
+    id: "promo",
+    q: "Do you accept promo codes?",
+    a: "Yes. When you buy credits, Stripe's checkout page has an Add promotion code box. Enter the code there and the discount is applied before you pay. The credits you receive stay the same.",
+  },
+  {
     id: "formats",
     q: "Which formats can I upload and download?",
     a: "Upload your source resume as PDF, DOCX, Markdown or plain text, up to 5 MB. Scanned PDFs have no readable text, so paste the text instead. Tailored resumes download as PDF, DOCX, Markdown or TXT.",

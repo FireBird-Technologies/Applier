@@ -60,12 +60,12 @@ def send_welcome(to: str, name: str = "") -> bool:
         f"<p>Hi {first},</p>"
         f"<p>You have <b>{settings.FREE_APPLICATIONS} free applications</b>. "
         "Add your base resume, open a job posting, and Applier tailors it for you. "
-        "A job counts as applied only when you download the resume.</p>"
+        "Each tailored resume uses one credit; editing and downloading it afterwards is free and unlimited.</p>"
     )
     text = (
         f"Hi {first},\n\nYou have {settings.FREE_APPLICATIONS} free applications. Add your base resume, "
-        "open a job posting, and Applier tailors it for you. A job counts as applied only when you "
-        "download the resume.\n"
+        "open a job posting, and Applier tailors it for you. Each tailored resume uses one credit; "
+        "editing and downloading it afterwards is free and unlimited.\n"
     )
     return send_email(to, "Welcome to Applier", _layout("Welcome to Applier", body), text)
 

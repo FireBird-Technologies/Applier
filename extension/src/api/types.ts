@@ -4,7 +4,7 @@ export interface Usage {
   free_limit: number; paid_credits: number; total: number; applied: number; remaining: number;
   level: CreditLevel; paywalled: boolean;
   price_per_application_usd: number; minimum_charge_usd: number; min_credits: number;
-  max_credits: number; suggested_credits: number[];
+  max_credits: number; suggested_credits: number[]; promo_codes?: boolean;
 }
 export interface AuthOut { access_token: string; user: User; usage: Usage }
 export interface SourceResume { id: number; filename: string; chars: number; preview: string }
@@ -23,6 +23,8 @@ export interface Resume {
   projects: { name: string; bullets: string[] }[];
   education: { school: string; degree: string; dates: string; details: string[] }[];
   certifications: string[];
+  /** Sections shown, top to bottom. A section missing here is hidden (its content is kept). */
+  section_order: string[];
 }
 export interface Application {
   id: number; job_url: string; job_title: string; company: string;
@@ -30,3 +32,11 @@ export interface Application {
   can_undo?: boolean; last_edit?: string;
 }
 export type Format = "pdf" | "docx" | "md" | "txt";
+
+export const SECTION_KEYS = ["summary", "skills", "experience", "projects", "education", "certifications"] as const;
+export type SectionKey = (typeof SECTION_KEYS)[number];
+
+/** The user's source resume as an editable document. */
+export interface SourceDoc {
+  id: number; filename: string; resume: Resume; version: number; can_undo: boolean; last_edit: string; notice?: string;
+}

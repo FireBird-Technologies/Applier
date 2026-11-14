@@ -76,6 +76,26 @@ python -m scripts.update_email list | cancel <id>
 - Each recipient is claimed in `update_email_sends` before sending (unique per campaign+user), so nobody gets it twice.
 - Every email has a signed unsubscribe link plus `List-Unsubscribe` one-click headers. Set `PUBLIC_API_URL` to the public API origin.
 
+## Anti-abuse: one browser, one account
+Each extension install creates a random browser ID (kept in local and Chrome-sync storage) and sends it as `X-Device-Id`.
+The server stores only a keyed hash. The first account to sign in on a browser owns it; a second Google account on the same
+browser is refused before it is created, so it gets no free credits. One account can use several browsers.
+`REQUIRE_DEVICE_ID=true` by default. Limits: someone who reinstalls with sync off, or uses another Chrome profile, gets a new ID.
+Add an IP or phone check if that becomes a problem.
+
+## Promo codes and pricing
+Promo codes use Stripe's own box on the checkout page. Create them in the Stripe dashboard (Coupons, then a promotion code).
+`STRIPE_ALLOW_PROMO_CODES=false` hides the box. A 100%-off code still grants the credits.
+All numbers come from env: `FREE_APPLICATIONS`, `PRICE_PER_APPLICATION_USD`, `MINIMUM_CHARGE_USD`, `SUGGESTED_CREDITS`,
+`MAX_CREDITS_PER_PURCHASE`. The extension gets them with the user's usage and the website reads the public `GET /api/pricing`
+(set `API_URL` in `web/.env.local`; pages refresh every 5 minutes). Restart the API after changing them.
+
+## Editing resumes
+The enlarge icon (tailored resume) and the eye icon (source resume) open a full-tab editor with Edit and Preview tabs.
+Sections can be removed, moved up or down and added back; entries inside a section can be moved too. Every AI or manual edit is
+undoable, and the AI is told your earlier requests so it does not undo them. The source resume is read into sections by the AI the
+first time you open it; edits are written back to the text that tailoring uses.
+
 ## Website (Next.js)
 `web/` is the marketing site: home, pricing, FAQ, blog, privacy and terms, in the same black-and-white Geist style.
 ```bash

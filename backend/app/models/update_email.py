@@ -14,7 +14,7 @@ class UpdateEmail(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     subject: Mapped[str] = mapped_column(String(300))
     body: Mapped[str] = mapped_column(Text)  # plain text; HTML-escaped when sent
-    # all | active (>=1 applied) | inactive (0 applied) | exhausted (used all free applications)
+    # all | active (>=1 resume generated) | inactive (none) | exhausted (used every credit)
     user_filter: Mapped[str] = mapped_column(String(20), default="all")
     batch_size: Mapped[int] = mapped_column(Integer, default=50)  # recipients per daily run
     send_hour: Mapped[int] = mapped_column(Integer, default=-1)  # UTC hour; -1 = UPDATE_EMAIL_SEND_HOUR

@@ -8,8 +8,9 @@ from app.database import Base
 
 
 class ApplicationStatus(str, enum.Enum):
-    DRAFT = "draft"      # tailored resume generated, not downloaded
-    APPLIED = "applied"  # downloaded -> counts against the quota
+    GENERATING = "generating"  # credit reserved while the AI writes the resume; removed again if it fails
+    DRAFT = "draft"            # generated (this is when the credit is spent), not downloaded yet
+    APPLIED = "applied"        # downloaded at least once. Downloads and edits cost nothing
 
 
 class Application(Base):

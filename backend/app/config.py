@@ -55,6 +55,8 @@ class Settings(BaseSettings):
     # Stripe (credit purchases). Without STRIPE_SECRET_KEY the Buy credits endpoints return 503.
     STRIPE_SECRET_KEY: str = ""
     STRIPE_WEBHOOK_SECRET: str = ""
+    # Show the "Add promotion code" box on Stripe Checkout. Codes are created in the Stripe dashboard.
+    STRIPE_ALLOW_PROMO_CODES: bool = True
     # Credit meter: "moderate" once this share is used, "low" once this share or less is left.
     CREDITS_MODERATE_USED: float = 0.5
     CREDITS_LOW_REMAINING: float = 0.2

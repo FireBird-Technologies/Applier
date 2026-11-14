@@ -60,7 +60,7 @@ export function SourceScreen({ current, onSaved, onView, onCancel }: Props) {
             <div className="truncate font-medium">{current.filename}</div>
             <div className="text-gray-500">{current.chars.toLocaleString()} characters</div>
           </div>
-          <button className="shrink-0 p-1 text-gray-500 hover:text-black" onClick={onView} aria-label="View source resume" title="View source resume">
+          <button className="shrink-0 p-1 text-gray-500 hover:text-black" onClick={onView} aria-label="View and edit source resume" title="View and edit source resume">
             <EyeIcon size={18} />
           </button>
         </div>

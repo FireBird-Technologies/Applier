@@ -2,7 +2,7 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 
@@ -21,7 +21,7 @@ from app.services.detect import detect
 from app.services.history import clean_resume, describe, history_text, record
 from app.services.textclean import clean_text
 from app.services.email import send_quota_used
-from app.services.usage import get_usage
+from app.services.usage import STALE_RESERVATION, get_usage, utcnow
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["applications"])
@@ -38,14 +38,32 @@ def _out(a: Application) -> ApplicationOut:
 
 def _owned(db: Session, user: User, app_id: int) -> Application:
     a = db.get(Application, app_id)
-    if a is None or a.user_id != user.id:
+    if a is None or a.user_id != user.id or a.status == ApplicationStatus.GENERATING.value:
         raise HTTPException(404, "Application not found")
     return a
 
 
 def _require_quota(db: Session, user: User):
     if get_usage(db, user).paywalled:
-        raise HTTPException(402, "You are out of credits. Buy more to keep downloading.")
+        raise HTTPException(402, "You are out of credits. Buy more to generate another resume.")
+
+
+def _reserve_credit(db: Session, user: User, source, body: GenerateIn, jd: str) -> Application:
+    """Spend the credit BEFORE the slow AI call. Otherwise many parallel requests could all pass the
+    check while one credit is left. The row counts as used immediately; it is deleted if the AI fails."""
+    db.execute(select(User.id).where(User.id == user.id).with_for_update())  # Postgres: one generate per user at a time
+    db.execute(delete(Application).where(  # reservations abandoned by a crashed request
+        Application.user_id == user.id, Application.status == ApplicationStatus.GENERATING.value,
+        Application.created_at < utcnow() - STALE_RESERVATION))
+    _require_quota(db, user)
+    a = Application(
+        user_id=user.id, source_resume_id=source.id, job_url=body.url[:2048], job_title=body.job_title[:512],
+        company=body.company[:512], job_description=jd, resume={}, status=ApplicationStatus.GENERATING.value,
+        created_at=utcnow(),
+    )
+    db.add(a)
+    db.commit()  # also releases the row lock
+    return a
 
 
 def _llm_call(fn, *args):
@@ -66,32 +84,38 @@ def detect_page(body: DetectIn, user: User = Depends(get_current_user)):
 
 
 @router.post("/applications", response_model=ApplicationOut)
-def generate(body: GenerateIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def generate(body: GenerateIn, background: BackgroundTasks, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Generating spends one credit. After that, edits, undo and downloads are free and unlimited."""
     source = active_source(db, user)
     if source is None:
         raise HTTPException(400, "Add a source resume first")
-    _require_quota(db, user)
     jd = clean_text(body.text, limit=settings.MAX_JOB_CHARS)
     if len(jd) < 100:
         raise HTTPException(400, "Not enough job description text on this page")
 
-    resume = _llm_call(tailor_resume, source.text, body.job_title, body.company, jd)
-    resume = fit_to_one_page(resume.model_copy(update={"section_order": list(SECTIONS)}))  # the model never picks the layout
-    a = Application(
-        user_id=user.id, source_resume_id=source.id, job_url=body.url[:2048],
-        job_title=body.job_title[:512], company=body.company[:512],
-        job_description=jd, resume=resume.model_dump(),
-    )
+    a = _reserve_credit(db, user, source, body, jd)
+    try:
+        resume = _llm_call(tailor_resume, source.text, body.job_title, body.company, jd)
+        resume = fit_to_one_page(resume.model_copy(update={"section_order": list(SECTIONS)}))  # the model never picks the layout
+    except Exception:
+        db.rollback()
+        db.delete(a)  # nothing was delivered, so nothing is charged
+        db.commit()
+        raise
+    a.resume = resume.model_dump()
+    a.status = ApplicationStatus.DRAFT.value
     a.edits.append(ApplicationEdit(kind="generate", resume=a.resume))
-    db.add(a)
     db.commit()
+    if get_usage(db, user).paywalled:  # that was the last credit
+        background.add_task(send_quota_used, user.email)
     return _out(a)
 
 
 @router.get("/applications", response_model=list[ApplicationOut])
 def list_applications(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     rows = db.scalars(
-        select(Application).where(Application.user_id == user.id).options(selectinload(Application.edits))
+        select(Application).where(Application.user_id == user.id, Application.status != ApplicationStatus.GENERATING.value)
+        .options(selectinload(Application.edits))
         .order_by(Application.id.desc()).limit(50)
     )
     return [_out(a) for a in rows]
@@ -157,20 +181,16 @@ def undo(app_id: int, user: User = Depends(get_current_user), db: Session = Depe
 @router.get("/applications/{app_id}/download")
 def download(
     app_id: int,
-    background: BackgroundTasks,
     format: str = Query("pdf", pattern="^(pdf|docx|md|txt)$"),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Downloading is what counts as applying: the first download flips draft -> applied."""
+    """Free: the credit was spent when the resume was generated. The first download marks the job as applied."""
     a = _owned(db, user, app_id)
     if a.status == ApplicationStatus.DRAFT.value:
-        _require_quota(db, user)
         a.status = ApplicationStatus.APPLIED.value
-        a.applied_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        a.applied_at = utcnow()
         db.commit()
-        if get_usage(db, user).paywalled:  # this download used the last credit
-            background.add_task(send_quota_used, user.email)
     data = render.render(TailoredResume.model_validate(a.resume), format)
     slug = "-".join(filter(None, [a.company, a.job_title])).lower().replace(" ", "-")[:60] or f"resume-{a.id}"
     return Response(

@@ -30,7 +30,7 @@ def test_pricing_endpoint_is_public_and_reads_settings(monkeypatch):
     r = TestClient(app).get("/api/pricing")  # no auth header
     assert r.status_code == 200
     assert r.json() == {"free_credits": 7, "price_per_application_usd": 0.25, "minimum_charge_usd": 5.0,
-                        "min_credits": 20, "max_credits": 500, "suggested_credits": [20, 40, 100]}
+                        "min_credits": 20, "max_credits": 500, "suggested_credits": [20, 40, 100], "promo_codes": True}
     assert "max-age" in r.headers["cache-control"]
 
 

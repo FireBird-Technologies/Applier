@@ -55,27 +55,29 @@ def test_full_flow_and_quota(client):
     assert s["method"] == "structured" and s["company"] == "Acme"
     assert client.post("/api/detect", json={"text": "short"}).json()["is_job"] is False
 
+    usage = lambda: client.get("/api/auth/me").json()["usage"]
+    assert usage()["used"] == 0
     ids = []
-    for _ in range(3):
+    for n in (1, 2):  # FREE_APPLICATIONS is 2 in these tests
         r = client.post("/api/applications", json={"url": "u", "job_title": "BE", "company": "Acme", "text": JD})
         assert r.status_code == 200, r.text
         ids.append(r.json()["id"])
         assert r.json()["status"] == "draft"
-    assert client.get("/api/auth/me").json()["usage"]["applied"] == 0  # drafts are free
+        assert usage()["used"] == n  # generating is what spends the credit
+    assert usage()["paywalled"] and usage()["remaining"] == 0
+    assert client.post("/api/applications", json={"text": JD}).status_code == 402  # out of credits: no new resume
 
-    e = client.post(f"/api/applications/{ids[0]}/edit", json={"instruction": "shorter summary"}).json()
-    assert e["version"] == 2 and e["resume"]["summary"] == "shorter summary"
-
+    # ...but everything on the resumes you already made is free and unlimited, even at zero credits
+    for i in range(4):
+        e = client.post(f"/api/applications/{ids[0]}/edit", json={"instruction": f"change {i}"})
+        assert e.status_code == 200 and e.json()["version"] == i + 2
+    assert client.post(f"/api/applications/{ids[0]}/undo").status_code == 200
     for fmt, magic in [("pdf", b"%PDF"), ("docx", b"PK"), ("md", b"# Jane"), ("txt", b"JANE")]:
         r = client.get(f"/api/applications/{ids[0]}/download?format={fmt}")
         assert r.status_code == 200 and r.content.startswith(magic), fmt
-    assert client.get("/api/auth/me").json()["usage"]["applied"] == 1  # re-download not double counted
-
     assert client.get(f"/api/applications/{ids[1]}/download").status_code == 200
-    me = client.get("/api/auth/me").json()["usage"]
-    assert me["applied"] == 2 and me["paywalled"]
-    assert client.get(f"/api/applications/{ids[2]}/download").status_code == 402
-    assert client.post("/api/applications", json={"text": JD}).status_code == 402
+    assert usage()["used"] == 2  # edits, undo and downloads never used another credit
+    assert client.get(f"/api/applications/{ids[0]}").json()["status"] == "applied"  # still tracks that it was downloaded
 
 
 def test_other_users_cannot_access(client):

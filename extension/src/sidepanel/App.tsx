@@ -9,7 +9,6 @@ import { EyeIcon } from "./Icons";
 import { JobScreen } from "./JobScreen";
 import { Logo, LogoMark } from "./Logo";
 import { SourceScreen } from "./SourceScreen";
-import { SourceViewer } from "./SourceViewer";
 
 type Stage = "boot" | "signed-out" | "app";
 type View = "main" | "source" | "buy";
@@ -17,7 +16,6 @@ type View = "main" | "source" | "buy";
 export function App() {
   const [stage, setStage] = useState<Stage>("boot");
   const [view, setView] = useState<View>("main");
-  const [viewingSource, setViewingSource] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [usage, setUsage] = useState<Usage | null>(null);
   const [source, setSource] = useState<SourceResume | null>(null);
@@ -45,6 +43,16 @@ export function App() {
   const signOut = async () => { await clearToken(); setUser(null); setSource(null); setView("main"); setStage("signed-out"); };
   const refreshUsage = useCallback(() => { api.me().then((m) => setUsage(m.usage)).catch(() => {}); }, []);
   const closeBuy = useCallback(() => setView("main"), []);
+  const openSource = () => chrome.tabs.create({ url: chrome.runtime.getURL("editor.html?source=1") });
+
+  // The editor tab announces saves to the source resume; reload its size and name here.
+  useEffect(() => {
+    const onChanged = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
+      if (area === "local" && changes.applier_source_saved) api.getSource().then(setSource).catch(() => {});
+    };
+    chrome.storage.onChanged.addListener(onChanged);
+    return () => chrome.storage.onChanged.removeListener(onChanged);
+  }, []);
 
   if (stage === "boot") return <div className="p-4 text-gray-500">Loading...</div>;
 
@@ -83,8 +91,8 @@ export function App() {
           {source && (
             <span className="inline-flex items-center gap-1">
               <button className="hover:text-black" onClick={() => setView("source")}>Resume</button>
-              <button className="p-1 hover:text-black" onClick={() => setViewingSource(true)}
-                aria-label="View source resume" title="View source resume"><EyeIcon size={15} /></button>
+              <button className="p-1 hover:text-black" onClick={openSource}
+                aria-label="View and edit source resume" title="View and edit source resume"><EyeIcon size={15} /></button>
             </span>
           )}
           <button className="hover:text-black" onClick={signOut} title={user?.email}>Sign out</button>
@@ -97,7 +105,7 @@ export function App() {
         {view === "buy" && usage ? (
           <BuyScreen usage={usage} onClose={closeBuy} onPurchased={setUsage} />
         ) : needsSource ? (
-          <SourceScreen current={source} onView={() => setViewingSource(true)}
+          <SourceScreen current={source} onView={openSource}
             onSaved={(s) => { setSource(s); setView("main"); }}
             onCancel={source ? () => setView("main") : undefined} />
         ) : (
@@ -105,7 +113,6 @@ export function App() {
         )}
       </main>
 
-      {viewingSource && <SourceViewer onClose={() => setViewingSource(false)} />}
     </div>
   );
 }

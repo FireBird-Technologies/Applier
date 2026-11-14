@@ -39,7 +39,7 @@ def unsubscribe_url(email: str) -> str:
 def eligible_users(user_filter: str):
     applied = (
         select(func.count(Application.id))
-        .where(Application.user_id == User.id, Application.status == ApplicationStatus.APPLIED.value)
+        .where(Application.user_id == User.id, Application.status != ApplicationStatus.GENERATING.value)
         .correlate(User)
         .scalar_subquery()
     )

@@ -132,7 +132,10 @@ export function BuyScreen({ usage, onClose, onPurchased }: Props) {
       <button className="btn-primary w-full py-2.5" disabled={!valid || phase === "starting"} onClick={start}>
         {phase === "starting" ? "Opening checkout..." : `Continue to checkout · ${money(price(credits))}`}
       </button>
-      <p className="text-center text-[12px] text-gray-500">Payment is handled by Stripe in a new tab. We never see your card.</p>
+      <p className="text-center text-[12px] text-gray-500">
+        Payment is handled by Stripe in a new tab. We never see your card.
+        {usage.promo_codes && " Have a promo code? Enter it on the checkout page."}
+      </p>
       {error && <p className="border-l-2 border-black pl-2">{error}</p>}
       <button className="btn-ghost w-full" onClick={onClose}>Cancel</button>
     </div>

@@ -57,7 +57,7 @@ def test_usage_endpoint_reports_level_and_totals(client):
             db.add(Application(user_id=user.id, job_description="jd", resume={}, status="applied"))
         db.commit()
     u = client.get("/api/auth/me").json()["usage"]
-    assert (u["total"], u["applied"], u["remaining"], u["level"], u["paywalled"]) == (50, 26, 24, "moderate", False)
+    assert (u["total"], u["used"], u["remaining"], u["level"], u["paywalled"]) == (50, 26, 24, "moderate", False)
 
 
 # ---------------------------------------------------------------- pricing
@@ -95,6 +95,7 @@ def test_checkout_validation_and_session(client, monkeypatch):
     assert seen["mode"] == "payment" and seen["line_items"][0]["price_data"]["unit_amount"] == 500
     assert seen["metadata"]["credits"] == "50" and seen["customer_email"] == "jane@x.com"
     assert "{CHECKOUT_SESSION_ID}" in seen["success_url"]
+    assert seen["allow_promotion_codes"] is True  # Stripe shows the promo code box
 
 
 # ---------------------------------------------------------------- crediting
@@ -138,7 +139,7 @@ def test_success_page_credits_account_without_webhook(client, monkeypatch):
     assert again.status_code == 200 and client.get("/api/auth/me").json()["usage"]["paid_credits"] == 30
 
 
-def test_bought_credits_unlock_downloads(client):
+def test_bought_credits_unlock_generating(client):
     client.post("/api/source/upload", files={"file": ("cv.txt", RESUME)})
     with SessionLocal() as db:
         user = db.scalar(select(User))
@@ -151,6 +152,7 @@ def test_bought_credits_unlock_downloads(client):
     r = client.post("/api/applications", json={"text": JD})
     assert r.status_code == 200
     assert client.get(f"/api/applications/{r.json()['id']}/download").status_code == 200
+    assert client.get('/api/auth/me').json()['usage']['used'] == 11  # the new resume spent one of the bought credits
 
 
 # ---------------------------------------------------------------- manual edits
@@ -174,3 +176,97 @@ def test_manual_edit_saves_cleans_and_stays_one_page(client):
     assert client.get(f"/api/applications/{aid}/download?format=pdf").status_code == 200
 
     assert client.put(f"/api/applications/{aid}", json={"resume": {"name": "  "}}).status_code == 400
+
+
+# ---------------------------------------------------------------- promo codes
+def test_promo_codes_can_be_switched_off(client, monkeypatch):
+    seen = {}
+
+    class FakeSession:
+        @staticmethod
+        def create(**kw):
+            seen.update(kw)
+            return {"url": "https://checkout.stripe.com/x"}
+
+    class FakeStripe:
+        checkout = type("c", (), {"Session": FakeSession})
+
+    monkeypatch.setattr(billing.settings, "STRIPE_SECRET_KEY", "sk_test_x")
+    monkeypatch.setattr(billing.settings, "STRIPE_ALLOW_PROMO_CODES", False)
+    monkeypatch.setattr(billing, "_stripe", lambda: FakeStripe)
+    assert client.post("/api/billing/checkout", json={"credits": 30}).status_code == 200
+    assert seen["allow_promotion_codes"] is False
+    assert client.get("/api/auth/me").json()["usage"]["promo_codes"] is False
+
+
+def test_discounted_and_free_promo_sessions_still_grant_the_credits(client):
+    with SessionLocal() as db:
+        half = {**paid_session("cs_half", 50), "amount_total": 250}  # 50% off: pays less, same credits
+        assert billing.apply_checkout_session(db, half) == 50
+        free = {**paid_session("cs_free", 30, status="no_payment_required"), "amount_total": 0}  # 100% off code
+        assert billing.apply_checkout_session(db, free) == 30
+        assert billing.apply_checkout_session(db, free) == 0  # still idempotent
+        assert db.scalar(select(User)).paid_credits == 80
+        assert sorted(p.amount_cents for p in db.scalars(select(Payment))) == [0, 250]  # records what was really paid
+
+
+def test_success_page_accepts_a_free_promo_session(client, monkeypatch):
+    monkeypatch.setattr(billing, "retrieve_session", lambda sid: {**paid_session(sid, 30, status="no_payment_required"), "amount_total": 0})
+    r = TestClient(app).get("/billing/success", params={"session_id": "cs_f"})
+    assert "30 credits were added" in r.text and client.get("/api/auth/me").json()["usage"]["paid_credits"] == 30
+
+
+# ---------------------------------------------------------------- credit is spent at generate
+def test_failed_generation_costs_nothing(client, monkeypatch):
+    client.post("/api/source/upload", files={"file": ("cv.txt", RESUME)})
+
+    def boom(*a):
+        raise RuntimeError("llm down")
+
+    monkeypatch.setattr(apps_router, "tailor_resume", boom)
+    assert client.post("/api/applications", json={"text": JD}).status_code == 502
+    assert client.get("/api/auth/me").json()["usage"]["used"] == 0  # the reserved credit was given back
+    assert client.get("/api/applications").json() == []
+
+
+def test_credit_is_reserved_while_the_ai_is_working(client, monkeypatch):
+    """A request that arrives while another is still generating must see that credit as taken."""
+    client.post("/api/source/upload", files={"file": ("cv.txt", RESUME)})
+    seen = {}
+
+    def slow_tailor(*a):
+        seen["used_midway"] = client.get("/api/auth/me").json()["usage"]["used"]
+        seen["listed_midway"] = client.get("/api/applications").json()  # an unfinished resume is not shown
+        return TailoredResume(name="Jane")
+
+    monkeypatch.setattr(apps_router, "tailor_resume", slow_tailor)
+    assert client.post("/api/applications", json={"text": JD}).status_code == 200
+    assert seen["used_midway"] == 1 and seen["listed_midway"] == []
+
+
+def test_parallel_requests_cannot_overspend(client, monkeypatch):
+    client.post("/api/source/upload", files={"file": ("cv.txt", RESUME)})
+    with SessionLocal() as db:
+        db.add_all(Application(user_id=db.scalar(select(User)).id, job_description="jd", resume={}) for _ in range(9))
+        db.commit()  # 9 of 10 spent: exactly one credit left
+    results = []
+
+    def racing_tailor(*a):
+        results.append(client.post("/api/applications", json={"text": JD}).status_code)  # a second request mid-generation
+        return TailoredResume(name="Jane")
+
+    monkeypatch.setattr(apps_router, "tailor_resume", racing_tailor)
+    assert client.post("/api/applications", json={"text": JD}).status_code == 200
+    assert results == [402]  # the racing request was refused: the last credit was already reserved
+
+
+def test_abandoned_reservations_expire(client):
+    from datetime import timedelta
+    from app.services.usage import utcnow
+
+    with SessionLocal() as db:
+        uid = db.scalar(select(User)).id
+        db.add(Application(user_id=uid, job_description="jd", resume={}, status="generating", created_at=utcnow()))
+        db.add(Application(user_id=uid, job_description="jd", resume={}, status="generating", created_at=utcnow() - timedelta(hours=1)))
+        db.commit()
+    assert client.get("/api/auth/me").json()["usage"]["used"] == 1  # the stale one (a crashed request) is ignored

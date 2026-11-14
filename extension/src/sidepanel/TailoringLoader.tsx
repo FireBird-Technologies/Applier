@@ -9,6 +9,12 @@ export const TAILOR_STEPS = [
   "Polishing the final resume",
 ];
 
+export const PARSE_STEPS = [
+  "Reading your resume",
+  "Finding your sections and roles",
+  "Getting it ready to edit",
+];
+
 export const EDIT_STEPS = [
   "Reading your request",
   "Rewriting the resume",

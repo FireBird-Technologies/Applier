@@ -58,7 +58,7 @@ def test_welcome_only_on_first_signin(sent, monkeypatch):
     assert "Hi Jane," in sent[0]["text"]
 
 
-def test_quota_email_sent_once_on_last_free_download(sent):
+def test_quota_email_sent_once_when_the_last_credit_is_spent(sent):
     with SessionLocal() as db:
         u = User(google_sub="g1", email="jane@x.com")
         db.add(u)
@@ -66,10 +66,11 @@ def test_quota_email_sent_once_on_last_free_download(sent):
         tok = create_access_token(u.id)
     c = TestClient(app, headers={"Authorization": f"Bearer {tok}"})
     c.post("/api/source/upload", files={"file": ("cv.txt", RESUME)})
-    ids = [c.post("/api/applications", json={"text": JD}).json()["id"] for _ in range(2)]
-
-    c.get(f"/api/applications/{ids[0]}/download")
-    assert sent == []  # 1 of 2 used
-    c.get(f"/api/applications/{ids[1]}/download")
-    c.get(f"/api/applications/{ids[1]}/download")  # re-download must not re-send
+    first = c.post("/api/applications", json={"text": JD}).json()["id"]
+    assert sent == []  # 1 of 2 spent
+    second = c.post("/api/applications", json={"text": JD}).json()["id"]  # spends the last credit
     assert [m["subject"] for m in sent] == ["You're out of Applier credits"]
+    for aid in (first, second):  # edits and downloads do not spend credits, so they never re-send it
+        c.post(f"/api/applications/{aid}/edit", json={"instruction": "tweak it"})
+        c.get(f"/api/applications/{aid}/download")
+    assert len(sent) == 1

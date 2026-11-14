@@ -24,6 +24,7 @@ def pricing(response: Response):
         free_credits=settings.FREE_APPLICATIONS, price_per_application_usd=settings.PRICE_PER_APPLICATION_USD,
         minimum_charge_usd=settings.MINIMUM_CHARGE_USD, min_credits=billing.min_credits(),
         max_credits=billing.max_credits(), suggested_credits=billing.suggested_credits(),
+        promo_codes=settings.STRIPE_ALLOW_PROMO_CODES,
     )
 
 
@@ -68,7 +69,7 @@ def success(session_id: str = Query(...), db: Session = Depends(get_db)):
         log.exception("Could not retrieve checkout session")
         return simple_page("Payment received", "We could not confirm it just now. Your credits will appear shortly.")
     added = billing.apply_checkout_session(db, session)
-    if session.get("payment_status") != "paid":
+    if session.get("payment_status") not in billing.PAID_STATES:
         return simple_page("Payment pending", "Your payment has not completed yet. Credits are added once it does.")
     msg = f"{added} credits were added. " if added else "Your credits have been added. "
     return simple_page("Payment received", msg + "You can close this tab and go back to Applier.")

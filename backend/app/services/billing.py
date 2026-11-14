@@ -12,6 +12,10 @@ from app.models.payment import Payment
 from app.models.user import User
 
 log = logging.getLogger(__name__)
+# A 100%-off promo code finishes with no charge, and Stripe then reports "no_payment_required" instead of "paid".
+PAID_STATES = ("paid", "no_payment_required")
+
+
 class PaymentsNotConfigured(Exception):
     pass
 
@@ -65,6 +69,7 @@ def create_checkout_session(user: User, credits: int) -> dict:
             },
         }],
         customer_email=user.email,
+        allow_promotion_codes=settings.STRIPE_ALLOW_PROMO_CODES,
         client_reference_id=str(user.id),
         metadata={"user_id": str(user.id), "credits": str(credits)},
         success_url=f"{base}/billing/success?session_id={{CHECKOUT_SESSION_ID}}",
@@ -86,7 +91,7 @@ def construct_event(payload: bytes, signature: str):
 def apply_checkout_session(db: Session, session: dict) -> int:
     """Credit the user for a PAID Checkout Session. Idempotent: the webhook and the success page can
     both call this for the same session and the credits are added once. Returns credits added (0 if none)."""
-    if session.get("payment_status") != "paid":
+    if session.get("payment_status") not in PAID_STATES:
         return 0
     sid = session["id"]
     if db.scalar(select(Payment.id).where(Payment.stripe_session_id == sid)):

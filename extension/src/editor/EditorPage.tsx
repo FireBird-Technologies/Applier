@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
-import type { Application, Format, Resume } from "../api/types";
+import type { Application, Format, Resume, SourceDoc } from "../api/types";
 import { Logo } from "../sidepanel/Logo";
-import { EDIT_STEPS, TailoringLoader } from "../sidepanel/TailoringLoader";
 import { ResumePreview } from "../sidepanel/ResumePreview";
+import { EDIT_STEPS, PARSE_STEPS, TailoringLoader } from "../sidepanel/TailoringLoader";
 import { ResumeForm } from "./ResumeForm";
 
 const FORMATS: Format[] = ["pdf", "docx", "md", "txt"];
@@ -11,10 +11,51 @@ const Label = ({ children }: { children: string }) => (
   <div className="mb-3 text-[11px] font-medium uppercase tracking-[0.14em] text-gray-400">{children}</div>
 );
 
-/** Full-tab editor with two tabs at the top: Edit and Preview. Each takes the whole window. */
+/** What the editor needs, whether it is editing a tailored resume or the user's source resume. */
+interface Doc {
+  title: string;
+  resume: Resume;
+  version: number;
+  canUndo: boolean;
+  lastEdit: string;
+  applied: boolean;
+  notice: string;
+}
+const fromApp = (a: Application): Doc => ({
+  title: [a.job_title, a.company].filter(Boolean).join(" at ") || "Tailored resume", resume: a.resume, version: a.version,
+  canUndo: !!a.can_undo, lastEdit: a.last_edit ?? "", applied: a.status === "applied", notice: a.notice ?? "",
+});
+const fromSource = (d: SourceDoc): Doc => ({
+  title: d.filename, resume: d.resume, version: d.version, canUndo: d.can_undo, lastEdit: d.last_edit, applied: false, notice: d.notice ?? "",
+});
+
+function makeIo(isSource: boolean, id: number) {
+  return isSource
+    ? {
+        get: async () => fromSource(await api.getSourceDoc()),
+        save: async (r: Resume) => fromSource(await api.saveSourceDoc(r)),
+        edit: async (i: string) => fromSource(await api.editSourceDoc(i)),
+        undo: async () => fromSource(await api.undoSourceDoc()),
+      }
+    : {
+        get: async () => fromApp(await api.getApplication(id)),
+        save: async (r: Resume) => fromApp(await api.saveResume(id, r)),
+        edit: async (i: string) => fromApp(await api.edit(id, i)),
+        undo: async () => fromApp(await api.undo(id)),
+      };
+}
+
+/**
+ * Full-tab editor with two tabs at the top: Edit and Preview. Each takes the whole window.
+ * Opened from the side panel: the enlarge icon on a tailored resume, or the eye icon for the source resume.
+ */
 export function EditorPage() {
-  const id = Number(new URLSearchParams(location.search).get("id"));
-  const [app, setApp] = useState<Application | null>(null);
+  const params = new URLSearchParams(location.search);
+  const isSource = params.has("source");
+  const id = Number(params.get("id"));
+  const io = useMemo(() => makeIo(isSource, id), [isSource, id]);
+
+  const [doc, setDoc] = useState<Doc | null>(null);
   const [draft, setDraft] = useState<Resume | null>(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -22,27 +63,31 @@ export function EditorPage() {
   const [instruction, setInstruction] = useState("");
   const [tab, setTab] = useState<"edit" | "preview">("edit");
 
+  const adopt = (d: Doc) => { setDoc(d); setDraft(d.resume); };
+
   useEffect(() => {
-    if (!id) { setError("No resume selected."); return; }
-    api.getApplication(id)
-      .then((a) => { setApp(a); setDraft(a.resume); })
-      .catch((e: Error) => setError(e.message.includes("authenticated") || e.message.includes("token")
-        ? "Open the Applier side panel and sign in, then try again." : e.message));
-  }, [id]);
+    if (!isSource && !id) { setError("No resume selected."); return; }
+    io.get().then(adopt).catch((e: Error) => setError(e.message.includes("authenticated") || e.message.includes("token")
+      ? "Open the Applier side panel and sign in, then try again." : e.message));
+  }, [io, isSource, id]);
 
-  const dirty = !!app && !!draft && JSON.stringify(draft) !== JSON.stringify(app.resume);
+  const dirty = !!doc && !!draft && JSON.stringify(draft) !== JSON.stringify(doc.resume);
 
-  // The side panel listens for this and refreshes its preview, status and credits.
-  const announce = (notice = "") => chrome.storage.local.set({ applier_resume_saved: { id, notice, ts: Date.now() } });
+  // The side panel listens for these and refreshes (preview, status, credits, or the source resume's size).
+  const announce = (notice = "") => {
+    const payload: Record<string, unknown> = isSource
+      ? { applier_source_saved: { ts: Date.now() } }
+      : { applier_resume_saved: { id, notice, ts: Date.now() } };
+    return chrome.storage.local.set(payload);
+  };
 
-  const adopt = (a: Application) => { setApp(a); setDraft(a.resume); };
   /** Save pending hand edits. Everything below calls this first so files and AI edits match what you see. */
-  const persist = useCallback(async () => {
-    if (!dirty || !draft) return;
-    const saved = await api.saveResume(id, draft);
+  const persist = async () => {
+    if (!dirty || !draft) return null;
+    const saved = await io.save(draft);
     adopt(saved);
     return saved;
-  }, [dirty, draft, id]);
+  };
 
   const run = async (kind: typeof busy, ok: string, fn: () => Promise<void>) => {
     setBusy(kind); setMessage("");
@@ -56,19 +101,19 @@ export function EditorPage() {
   });
   const ask = () => run("edit", "Updated", async () => {
     await persist();
-    adopt(await api.edit(id, instruction));
+    adopt(await io.edit(instruction));
     setInstruction("");
     await announce();
   });
   // Unsaved typing is reverted first (like a normal undo); otherwise the last saved edit is stepped back.
   const undo = () => {
-    if (dirty && app) { setDraft(app.resume); setMessage("Reverted unsaved changes"); return; }
-    return run("undo", "Undone", async () => { adopt(await api.undo(id)); await announce(); });
+    if (dirty && doc) { setDraft(doc.resume); setMessage("Reverted unsaved changes"); return; }
+    return run("undo", "Undone", async () => { adopt(await io.undo()); await announce(); });
   };
   const download = (f: Format) => run(f, "Downloaded", async () => {
     await persist();
     await api.download(id, f);
-    setApp((a) => (a ? { ...a, status: "applied" } : a));
+    setDoc((d) => (d ? { ...d, applied: true } : d));
     await announce();
   });
 
@@ -81,10 +126,12 @@ export function EditorPage() {
   });
 
   if (error) return <div className="mx-auto max-w-md p-16 text-center text-[15px] text-gray-500">{error}</div>;
-  if (!app || !draft) return <div className="p-16 text-center text-gray-400">Loading...</div>;
-
-  const title = [app.job_title, app.company].filter(Boolean).join(" at ") || "Tailored resume";
-  const applied = app.status === "applied";
+  if (!doc || !draft) {
+    // The source resume is read into sections by the AI the first time it is opened, which takes a moment.
+    return isSource
+      ? <TailoringLoader title="" company="" steps={PARSE_STEPS} verb="Reading" hint="First time only. Keep this tab open." />
+      : <div className="p-16 text-center text-gray-400">Loading...</div>;
+  }
 
   return (
     <div className="min-h-screen text-[15px]">
@@ -92,16 +139,20 @@ export function EditorPage() {
         <div className="flex items-center justify-between gap-4 px-8 py-4">
           <div className="flex min-w-0 items-center gap-5">
             <Logo size={20} />
-            <span className="truncate text-[16px] font-medium tracking-tight">{title}</span>
-            <span className={`shrink-0 rounded-full border border-gray-200 px-2.5 py-0.5 text-[11px] font-medium ${applied ? "bg-black text-white" : ""}`}>
-              {applied ? "Applied" : "Draft"}
-            </span>
+            <span className="truncate text-[16px] font-medium tracking-tight">{doc.title}</span>
+            {isSource ? (
+              <span className="shrink-0 rounded-full border border-gray-200 px-2.5 py-0.5 text-[11px] font-medium">Source resume</span>
+            ) : (
+              <span className={`shrink-0 rounded-full border border-gray-200 px-2.5 py-0.5 text-[11px] font-medium ${doc.applied ? "bg-black text-white" : ""}`}>
+                {doc.applied ? "Applied" : "Draft"}
+              </span>
+            )}
           </div>
           <div className="flex shrink-0 items-center gap-6 text-[14px]">
             <span className="text-gray-400" role="status">{dirty ? "Unsaved changes" : message}</span>
             <button className="text-gray-500 hover:text-black disabled:text-gray-300 disabled:hover:text-gray-300"
-              disabled={(!dirty && !app.can_undo) || !!busy} onClick={undo}
-              title={dirty ? "Discard unsaved changes" : app.can_undo ? `Undo: ${app.last_edit}` : "Nothing to undo"}>
+              disabled={(!dirty && !doc.canUndo) || !!busy} onClick={undo}
+              title={dirty ? "Discard unsaved changes" : doc.canUndo ? `Undo: ${doc.lastEdit}` : "Nothing to undo"}>
               {busy === "undo" ? "Undoing..." : "Undo"}
             </button>
             <button className="font-medium disabled:text-gray-300" disabled={!dirty || !!busy} onClick={save}>{busy === "save" ? "Saving..." : "Save"}</button>
@@ -119,7 +170,7 @@ export function EditorPage() {
       </header>
 
       {busy === "edit" ? (
-        <TailoringLoader title={app.job_title} company={app.company} steps={EDIT_STEPS} verb="Editing" hint="Usually just a few seconds. Keep this tab open." />
+        <TailoringLoader title={isSource ? "" : doc.title} company="" steps={EDIT_STEPS} verb="Editing" hint="Usually just a few seconds. Keep this tab open." />
       ) : tab === "edit" ? (
         <>
           {/* The ask bar spans the whole window */}
@@ -131,29 +182,38 @@ export function EditorPage() {
               <button className="btn-primary shrink-0 px-8 py-4 text-[15px]" disabled={!!busy || instruction.trim().length < 3} onClick={ask}>Apply</button>
             </div>
           </section>
-          {/* key remounts the form with the saved (possibly trimmed) text after each save, AI edit or undo */}
+          {isSource && (
+            <p className="mx-auto max-w-3xl px-8 pt-8 text-[13px] text-gray-500">
+              This is your base resume. Changes here are what every new tailored resume is built from. Sections you remove are not used when tailoring.
+            </p>
+          )}
+          {/* key remounts the form with the saved text after each save, AI edit or undo */}
           <main className="mx-auto max-w-3xl px-8 py-12">
-            <ResumeForm key={app.version} value={draft} onChange={setDraft} />
+            <ResumeForm key={doc.version} value={draft} onChange={setDraft} />
           </main>
         </>
       ) : (
         <main className="mx-auto max-w-3xl space-y-10 px-8 py-12">
-          <section>
-            <Label>Download</Label>
-            <div className="grid grid-cols-4 gap-3">
-              {FORMATS.map((f) => (
-                <button key={f} className="btn-primary py-4 text-[15px] uppercase" disabled={!!busy} onClick={() => download(f)}>
-                  {busy === f ? "..." : f}
-                </button>
-              ))}
-            </div>
-            <p className="mt-3 text-[13px] text-gray-500">
-              {applied ? "Counted as applied. More downloads and edits are free." : "Downloading marks this job as applied and uses 1 credit."}
-            </p>
-          </section>
+          {!isSource && (
+            <section>
+              <Label>Download</Label>
+              <div className="grid grid-cols-4 gap-3">
+                {FORMATS.map((f) => (
+                  <button key={f} className="btn-primary py-4 text-[15px] uppercase" disabled={!!busy} onClick={() => download(f)}>
+                    {busy === f ? "..." : f}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-3 text-[13px] text-gray-500">
+                {doc.applied ? "Counted as applied. More downloads and edits are free." : "Downloading marks this job as applied and uses 1 credit."}
+              </p>
+            </section>
+          )}
           <section>
             <ResumePreview r={draft} full />
-            <p className="mt-3 text-[13px] text-gray-400">Kept to one page. If an edit makes it too long, the least important items are trimmed when you save.</p>
+            <p className="mt-3 text-[13px] text-gray-400">
+              {isSource ? "How your base resume reads, section by section." : "Kept to one page. If an edit makes it too long, the least important items are trimmed when you save."}
+            </p>
           </section>
         </main>
       )}
