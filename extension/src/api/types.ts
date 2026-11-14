@@ -7,11 +7,11 @@ export interface AuthOut { access_token: string; user: User; usage: Usage }
 export interface SourceResume { id: number; filename: string; chars: number; preview: string }
 
 export interface PageData {
-  url: string; title: string; text: string; structured: Record<string, unknown> | null;
+  url: string; title: string; text: string; structured: Record<string, unknown> | null; signals?: string;
 }
 export interface Detect {
   is_job: boolean; confidence: number; job_title: string; company: string; reason: string;
-  method: "structured" | "heuristic" | "jev" | "llm";
+  method: "structured" | "heuristic" | "llm";
 }
 
 export interface Resume {

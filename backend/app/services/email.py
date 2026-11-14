@@ -73,13 +73,13 @@ def send_welcome(to: str, name: str = "") -> bool:
 def send_quota_used(to: str) -> bool:
     price, minimum = settings.PRICE_PER_APPLICATION_USD, settings.MINIMUM_CHARGE_USD
     body = (
-        f"<p>You've used all {settings.FREE_APPLICATIONS} free applications.</p>"
-        f"<p>Paid plans are coming soon: ${price:.2f} per application, ${minimum:.2f} minimum charge. "
-        "Your existing resumes stay available to download.</p>"
+        "<p>You've used all your credits.</p>"
+        f"<p>Open the Applier extension and choose <b>Buy credits</b> to keep going: ${price:.2f} per "
+        f"application, ${minimum:.2f} minimum. Your existing resumes stay available to download.</p>"
     )
     text = (
-        f"You've used all {settings.FREE_APPLICATIONS} free applications.\n\n"
-        f"Paid plans are coming soon: ${price:.2f} per application, ${minimum:.2f} minimum charge. "
-        "Your existing resumes stay available to download.\n"
+        "You've used all your credits.\n\n"
+        f"Open the Applier extension and choose Buy credits to keep going: ${price:.2f} per application, "
+        f"${minimum:.2f} minimum. Your existing resumes stay available to download.\n"
     )
-    return send_email(to, "You've used your free applications", _layout("Free applications used", body), text)
+    return send_email(to, "You're out of Applier credits", _layout("Out of credits", body), text)

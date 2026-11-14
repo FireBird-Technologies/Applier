@@ -10,22 +10,13 @@ class DetectJobPage(dspy.Signature):
 
     page_url: str = dspy.InputField()
     page_title: str = dspy.InputField()
-    page_text: str = dspy.InputField(desc="visible text of the page, truncated")
+    page_text: str = dspy.InputField(desc="text of the page, truncated")
+    page_signals: str = dspy.InputField(desc="hints from the page HTML: meta tags, h1, apply buttons, resume upload field")
     is_job_posting: bool = dspy.OutputField()
     confidence: float = dspy.OutputField(desc="0.0 to 1.0")
     job_title: str = dspy.OutputField(desc="empty if not a job posting")
     company: str = dspy.OutputField(desc="empty if not a job posting")
     reason: str = dspy.OutputField(desc="one short sentence")
-
-
-class ExtractJobMeta(dspy.Signature):
-    """Extract the role title and hiring company from a job posting page."""
-
-    page_url: str = dspy.InputField()
-    page_title: str = dspy.InputField()
-    page_text: str = dspy.InputField()
-    job_title: str = dspy.OutputField(desc="the role being hired for")
-    company: str = dspy.OutputField(desc="the hiring company; empty if unknown")
 
 
 class TailorResume(dspy.Signature):
@@ -38,7 +29,9 @@ class TailorResume(dspy.Signature):
       mirror the job's vocabulary where it is truthful (ATS keywords).
     - Lead bullets with strong verbs, keep them concise and quantified when the
       source already has numbers. Drop clearly irrelevant material.
-    - Keep to one page of content where possible."""
+    - The resume MUST fit on ONE page. Budget: summary at most 2 short sentences; at most 12 skills;
+      4 to 5 bullets for the most recent or most relevant role, 2 to 3 for older ones; one line per bullet
+      (about 25 words max); omit projects and certifications unless they clearly help for this job."""
 
     source_resume: str = dspy.InputField(desc="the candidate's base resume text")
     job_title: str = dspy.InputField()
@@ -50,7 +43,9 @@ class TailorResume(dspy.Signature):
 class ReviseResume(dspy.Signature):
     """Apply the user's requested edit to the tailored resume and return the full
     updated resume. Make only the requested change. Still never invent facts that
-    are not in the source resume or stated by the user in the instruction."""
+    are not in the source resume or stated by the user in the instruction.
+    The resume must still fit on ONE page: if an addition makes it too long, shorten or drop the
+    least relevant content rather than growing the resume."""
 
     source_resume: str = dspy.InputField()
     current_resume: TailoredResume = dspy.InputField()

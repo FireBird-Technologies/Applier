@@ -26,13 +26,10 @@ class Settings(BaseSettings):
     DETECT_LLM_API_KEY: str = ""
     DETECT_LLM_API_BASE: str = ""
     DETECT_LLM_EXTRA_BODY: str = ""
-
-    # Job-page detector: "jev" | "llm" | "auto" (jev when TYPESAFE_API_KEY is set, else llm).
-    # If Jev errors at runtime the request falls back to the LLM.
-    DETECTOR: str = "auto"
-    TYPESAFE_API_KEY: str = ""
-    JEV_MODEL: str = ""  # empty = SDK default; pin e.g. a versioned id for stable thresholds
-    JEV_THRESHOLD: float = 0.5
+    # Job-page detection is a small classification call: low output budget, trimmed input.
+    DETECT_LLM_MAX_TOKENS: int = 600
+    DETECT_LLM_TEMPERATURE: float = 0.0
+    DETECT_TEXT_CHARS: int = 3000  # page text sent to the detector (head + tail of the cleaned text)
 
     # Email (Resend). Without RESEND_API_KEY emails are logged and skipped.
     RESEND_API_KEY: str = ""
@@ -44,6 +41,13 @@ class Settings(BaseSettings):
     UPDATE_EMAIL_SCHEDULER: bool = True       # set false on extra workers / in tests
     UPDATE_EMAIL_FROM: str = ""               # defaults to EMAIL_FROM
     PUBLIC_API_URL: str = "http://localhost:8000"  # used to build unsubscribe links
+
+    # Stripe (credit purchases). Without STRIPE_SECRET_KEY the Buy credits endpoints return 503.
+    STRIPE_SECRET_KEY: str = ""
+    STRIPE_WEBHOOK_SECRET: str = ""
+    # Credit meter: "moderate" once this share is used, "low" once this share or less is left.
+    CREDITS_MODERATE_USED: float = 0.5
+    CREDITS_LOW_REMAINING: float = 0.2
 
     FREE_APPLICATIONS: int = 10
     PRICE_PER_APPLICATION_USD: float = 0.10

@@ -7,7 +7,7 @@ from app.config import settings
 from app.database import get_db
 from app.models.source_resume import SourceResume
 from app.models.user import User
-from app.schemas import SourceResumeOut, SourceTextIn
+from app.schemas import SourceContentOut, SourceResumeOut, SourceTextIn
 from app.services.files import UnsupportedFile, extract_text
 
 router = APIRouter(prefix="/api/source", tags=["source"])
@@ -38,6 +38,14 @@ def _save(db: Session, user: User, filename: str, text: str) -> SourceResume:
 def get_source(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     s = active_source(db, user)
     return _out(s) if s else None
+
+
+@router.get("/content", response_model=SourceContentOut)
+def get_source_content(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    s = active_source(db, user)
+    if s is None:
+        raise HTTPException(404, "No source resume yet")
+    return SourceContentOut(filename=s.filename, text=s.text)
 
 
 @router.post("/upload", response_model=SourceResumeOut)

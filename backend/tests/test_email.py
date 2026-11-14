@@ -72,4 +72,4 @@ def test_quota_email_sent_once_on_last_free_download(sent):
     assert sent == []  # 1 of 2 used
     c.get(f"/api/applications/{ids[1]}/download")
     c.get(f"/api/applications/{ids[1]}/download")  # re-download must not re-send
-    assert [m["subject"] for m in sent] == ["You've used your free applications"]
+    assert [m["subject"] for m in sent] == ["You're out of Applier credits"]

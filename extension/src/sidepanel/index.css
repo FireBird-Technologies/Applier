@@ -16,3 +16,15 @@ body { margin: 0; font-size: 13px; line-height: 1.45; }
   .label { @apply mb-1 block text-[11px] font-medium uppercase tracking-wider text-gray-500; }
   .card { @apply rounded border border-gray-200 p-3; }
 }
+
+/* Indeterminate loader: a solid black segment sliding across a gray track. No gradients. */
+.loader-track { position: relative; height: 4px; overflow: hidden; background: #e5e5e5; border-radius: 9999px; }
+.loader-bar { position: absolute; top: 0; bottom: 0; left: 0; width: 30%; background: #000; border-radius: 9999px;
+  animation: applier-slide 1.4s cubic-bezier(0.65, 0, 0.35, 1) infinite; }
+@keyframes applier-slide { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
+.fade-in { animation: applier-fade 0.35s ease-out; }
+@keyframes applier-fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .loader-bar { animation: none; width: 40%; }
+  .fade-in { animation: none; }
+}

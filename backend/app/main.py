@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import applications, auth, sources, unsubscribe
+from app.routers import applications, auth, billing, sources, unsubscribe
 from app.services.updates import scheduler_loop
 
 logging.basicConfig(level=logging.INFO)
@@ -34,6 +34,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(sources.router)
 app.include_router(applications.router)
+app.include_router(billing.router)
 app.include_router(unsubscribe.router)
 
 

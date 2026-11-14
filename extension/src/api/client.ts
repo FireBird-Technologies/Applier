@@ -45,7 +45,15 @@ export const api = {
     return json<SourceResume>("/api/source/upload", { method: "POST", body: fd });
   },
   pasteSource: (text: string) => post<SourceResume>("/api/source/text", { text }),
-  detect: (p: PageData) => post<Detect>("/api/detect", p),
+  detect: (p: PageData, signal?: AbortSignal) =>
+    json<Detect>("/api/detect", {
+      method: "POST",
+      // Detection only needs the start and end of the page; the backend trims further.
+      body: JSON.stringify({ ...p, text: p.text.length > 8000 ? `${p.text.slice(0, 5500)}
+...
+${p.text.slice(-2500)}` : p.text }),
+      signal,
+    }),
   generate: (p: PageData, job_title: string, company: string) =>
     post<Application>("/api/applications", { ...p, job_title, company }),
   edit: (id: number, instruction: string) => post<Application>(`/api/applications/${id}/edit`, { instruction }),

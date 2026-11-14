@@ -3,6 +3,7 @@ import { api } from "../api/client";
 import type { Application, Detect, Format, PageData, Usage } from "../api/types";
 import { readActiveTab } from "../lib/extract";
 import { ResumePreview } from "./ResumePreview";
+import { TailoringLoader } from "./TailoringLoader";
 
 const FORMATS: Format[] = ["pdf", "docx", "md", "txt"];
 
@@ -15,31 +16,40 @@ export function JobScreen({ usage, onUsage }: Props) {
   const [page, setPage] = useState<PageData | null | undefined>(undefined); // undefined = scanning, null = unreadable
   const [det, setDet] = useState<Detect | null>(null);
   const [detecting, setDetecting] = useState(false);
+  const [stopped, setStopped] = useState(false); // user cancelled the scan
   const [override, setOverride] = useState<boolean | null>(null); // user's manual "is a job" answer
   const [title, setTitle] = useState("");
   const [company, setCompany] = useState("");
+  const [jd, setJd] = useState(""); // editable job description; prefilled from the page
   const [app, setApp] = useState<Application | null>(null);
   const [busy, setBusy] = useState<"" | "generate" | "edit" | Format>("");
   const [instruction, setInstruction] = useState("");
   const [error, setError] = useState("");
   const scanId = useRef(0);
+  const abort = useRef<AbortController | null>(null);
   const busyRef = useRef(busy);
   busyRef.current = busy;
 
   const scan = useCallback(async () => {
+    abort.current?.abort(); // a newer scan supersedes any request still in flight
+    const ac = new AbortController();
+    abort.current = ac;
     const id = ++scanId.current;
-    setPage(undefined); setDet(null); setOverride(null); setApp(null); setError(""); setTitle(""); setCompany("");
+    setDetecting(false); setStopped(false);
+    setPage(undefined); setDet(null); setOverride(null); setApp(null); setError(""); setTitle(""); setCompany(""); setJd("");
     const p = await readActiveTab();
     if (id !== scanId.current) return;
     setPage(p);
     if (!p) return;
+    setJd(p.text);
+    if (ac.signal.aborted) return; // stopped while the page was being read
     setDetecting(true);
     try {
-      const d = await api.detect(p);
+      const d = await api.detect(p, ac.signal);
       if (id !== scanId.current) return;
       setDet(d); setTitle(d.job_title); setCompany(d.company);
     } catch (e) {
-      if (id === scanId.current) setError((e as Error).message);
+      if (id === scanId.current && !ac.signal.aborted) setError((e as Error).message);
     } finally {
       if (id === scanId.current) setDetecting(false);
     }
@@ -58,6 +68,12 @@ export function JobScreen({ usage, onUsage }: Props) {
     return () => { clearTimeout(t); chrome.tabs.onActivated.removeListener(later); chrome.tabs.onUpdated.removeListener(onUpdated); };
   }, [scan]);
 
+  const stopScan = () => {
+    abort.current?.abort();
+    setStopped(true);
+    setDetecting(false);
+  };
+
   const isJob = override ?? det?.is_job ?? false;
   const host = page ? new URL(page.url).hostname : "";
 
@@ -66,7 +82,7 @@ export function JobScreen({ usage, onUsage }: Props) {
     try { await fn(); } catch (e) { setError((e as Error).message); } finally { setBusy(""); }
   };
 
-  const generate = () => run("generate", async () => setApp(await api.generate(page!, title, company)));
+  const generate = () => run("generate", async () => setApp(await api.generate({ ...page!, text: jd }, title, company)));
   const edit = () => run("edit", async () => { setApp(await api.edit(app!.id, instruction)); setInstruction(""); });
   const download = (f: Format) => run(f, async () => {
     await api.download(app!.id, f);
@@ -74,7 +90,17 @@ export function JobScreen({ usage, onUsage }: Props) {
     onUsage();
   });
 
-  if (page === undefined) return <Status>Reading page...</Status>;
+  // While tailoring, replace the whole form with the loading screen.
+  if (busy === "generate") return <TailoringLoader title={title} company={company} />;
+
+  if (page === undefined) {
+    return (
+      <div className="space-y-2 text-center">
+        <Status>Reading page...</Status>
+        {!stopped && <button className="btn-ghost px-3 py-1 text-[12px]" onClick={stopScan}>Stop</button>}
+      </div>
+    );
+  }
   if (page === null) return <Status>This page can't be read. Open a job posting in a normal tab.</Status>;
 
   return (
@@ -88,11 +114,16 @@ export function JobScreen({ usage, onUsage }: Props) {
         <button className="btn-ghost shrink-0 px-2 py-1 text-[12px]" onClick={scan} disabled={!!busy}>Rescan</button>
       </div>
 
-      {detecting && <Status>Checking if this is a job posting...</Status>}
+      {detecting && (
+        <div className="space-y-2 text-center">
+          <Status>Checking if this is a job posting...</Status>
+          <button className="btn-ghost px-3 py-1 text-[12px]" onClick={stopScan}>Stop scan</button>
+        </div>
+      )}
 
       {!detecting && !app && !isJob && (
         <div className="space-y-3">
-          <p>{det ? `This doesn't look like a job posting. ${det.reason}` : "Couldn't check this page."}</p>
+          <p>{stopped ? "Scan stopped." : det ? `This doesn't look like a job posting. ${det.reason}` : "Couldn't check this page."}</p>
           <button className="btn-ghost w-full" onClick={() => setOverride(true)}>This is a job page</button>
         </div>
       )}
@@ -108,17 +139,25 @@ export function JobScreen({ usage, onUsage }: Props) {
           </div>
           <div><label className="label">Role</label><input className="field" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Job title" /></div>
           <div><label className="label">Company</label><input className="field" value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Company" /></div>
+          <div>
+            <div className="flex items-baseline justify-between">
+              <label className="label">Job description</label>
+              <span className="text-[11px] text-gray-400">{jd.length.toLocaleString()} chars</span>
+            </div>
+            <textarea className="field h-44 resize-y text-[12px] leading-snug" value={jd} onChange={(e) => setJd(e.target.value)}
+              placeholder="Paste the job description here" />
+            {jd.trim().length < 100 && <p className="mt-1 text-[12px] text-gray-500">Add at least a few sentences of the job description.</p>}
+          </div>
           {usage.paywalled ? (
             <p className="border-l-2 border-black pl-2">
               You've used all {usage.free_limit} free applications. Paid plans are coming soon: ${usage.price_per_application_usd.toFixed(2)} per
               application, ${usage.minimum_charge_usd.toFixed(2)} minimum.
             </p>
           ) : (
-            <button className="btn-primary w-full" disabled={!!busy || page.text.length < 100} onClick={generate}>
-              {busy === "generate" ? "Tailoring your resume..." : "Generate tailored resume"}
+            <button className="btn-primary w-full" disabled={!!busy || jd.trim().length < 100} onClick={generate}>
+              Generate tailored resume
             </button>
           )}
-          {busy === "generate" && <div className="h-0.5 w-full animate-pulse bg-black" />}
         </div>
       )}
 

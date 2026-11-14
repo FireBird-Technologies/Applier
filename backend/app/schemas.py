@@ -51,11 +51,25 @@ class UserOut(BaseModel):
 
 class UsageOut(BaseModel):
     free_limit: int
+    paid_credits: int
+    total: int  # free + purchased
     applied: int
-    remaining_free: int
+    remaining: int
+    level: str  # ok | moderate | low | empty
+    paywalled: bool
     price_per_application_usd: float
     minimum_charge_usd: float
-    paywalled: bool
+    min_credits: int
+
+
+class CheckoutIn(BaseModel):
+    credits: int
+
+
+class CheckoutOut(BaseModel):
+    url: str
+    credits: int
+    amount_cents: int
 
 
 class AuthOut(BaseModel):
@@ -72,6 +86,11 @@ class SourceResumeOut(BaseModel):
     created_at: datetime
 
 
+class SourceContentOut(BaseModel):
+    filename: str
+    text: str
+
+
 class SourceTextIn(BaseModel):
     text: str
     filename: str = "pasted.txt"
@@ -82,6 +101,7 @@ class PageIn(BaseModel):
     title: str = ""
     text: str
     structured: dict | None = None  # JSON-LD JobPosting if the page has one
+    signals: str = ""  # hints read from the page HTML: meta tags, h1, apply buttons, upload fields
 
 
 class DetectIn(PageIn):
@@ -102,6 +122,10 @@ class GenerateIn(PageIn):
     company: str = ""
 
 
+class ResumeIn(BaseModel):
+    resume: TailoredResume
+
+
 class EditIn(BaseModel):
     instruction: str = Field(min_length=3, max_length=2000)
 
@@ -116,3 +140,4 @@ class ApplicationOut(BaseModel):
     resume: TailoredResume
     created_at: datetime
     applied_at: datetime | None = None
+    notice: str = ""  # e.g. what was trimmed to keep one page

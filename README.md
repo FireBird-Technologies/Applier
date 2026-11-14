@@ -1,4 +1,4 @@
-# Applier
+﻿# Applier
 
 Chrome extension: open a job posting, get a tailored resume (PDF / DOCX / MD / TXT).
 A job only counts as **applied** when you download the resume. First 10 applications are free.
@@ -14,7 +14,7 @@ Flow: Google sign-in -> source resume -> auto-detect job page (manual override) 
 docker compose up -d db
 cd backend && python -m venv .venv && .venv/Scripts/pip install -r requirements.txt
 cp .env.example .env            # fill GOOGLE_CLIENT_ID and LLM_API_KEY
-.venv/Scripts/alembic upgrade head
+.venv/Scripts/python -m alembic upgrade head
 .venv/Scripts/uvicorn app.main:app --reload
 .venv/Scripts/pytest tests      # runs on SQLite with a stubbed LLM
 ```
@@ -38,16 +38,17 @@ Quota = count of applications with status `applied`. Stripe is not wired yet: af
 returns 402. Planned: $0.10 per application, $3 minimum charge (`PRICE_PER_APPLICATION_USD`, `MINIMUM_CHARGE_USD`).
 
 ## Job-page detector
-`DETECTOR=auto|jev|llm`. With `TYPESAFE_API_KEY` set, Jev (TypeSafe) answers "is this a single job posting?" and a
-small DSPy call then extracts role/company. Pages with `JobPosting` JSON-LD skip classification entirely. If Jev errors,
-the request falls back to the DSPy LLM detector.
+Pages with `JobPosting` JSON-LD skip classification. Otherwise one small LLM call decides job vs. not and extracts
+role/company. The extension cleans the page text and the backend cleans it again (readable characters only, no URLs,
+junk tokens or repeated menu lines), then sends the first and last part of it, up to `DETECT_TEXT_CHARS` (3000).
+The call runs on `DETECT_LLM_MODEL` (a smaller model; defaults to `LLM_MODEL`) with `DETECT_LLM_MAX_TOKENS=600`.
 
 ## Testing the extension
 1. Backend: `uvicorn app.main:app --reload`, then check http://localhost:8000/api/health (shows the active model).
 2. `cd extension && npm run dev` (rebuilds on save). In `chrome://extensions` enable Developer mode -> Load unpacked -> `extension/dist`.
    After a rebuild, click the reload icon on the extension card, then reopen the side panel.
 3. Click the toolbar icon to open the side panel. Walk the flow: sign in -> add resume -> open a job page -> generate -> edit -> download.
-4. Debug: right-click the side panel -> Inspect (UI + network). Backend logs show LLM/Jev errors.
+4. Debug: right-click the side panel -> Inspect (UI + network). Backend logs show LLM errors.
 Without Google OAuth set up yet, mint a dev token (`python -c "from app.auth import create_access_token as t; print(t(1))"`
 after inserting a user) and paste it via the side panel's console:
 `chrome.storage.local.set({applier_token: "<jwt>"})`, then reopen the panel.

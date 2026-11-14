@@ -6,10 +6,12 @@ import dspy
 from app.config import settings
 
 
-def _build(model: str, key: str, base: str, extra_body: str = "") -> dspy.LM:
+def _build(
+    model: str, key: str, base: str, extra_body: str = "", *, temperature: float | None = None, max_tokens: int | None = None
+) -> dspy.LM:
     kwargs: dict = {
-        "temperature": settings.LLM_TEMPERATURE,
-        "max_tokens": settings.LLM_MAX_TOKENS,
+        "temperature": settings.LLM_TEMPERATURE if temperature is None else temperature,
+        "max_tokens": max_tokens or settings.LLM_MAX_TOKENS,
     }
     if key:
         kwargs["api_key"] = key
@@ -29,15 +31,25 @@ def get_lm() -> dspy.LM:
     return _cache["main"]
 
 
+def _different_model() -> bool:
+    return bool(settings.DETECT_LLM_MODEL) and settings.DETECT_LLM_MODEL != settings.LLM_MODEL
+
+
 def get_detect_lm() -> dspy.LM:
-    """Cheaper/faster model for page classification; falls back to the main one."""
-    if not settings.DETECT_LLM_MODEL:
-        return get_lm()
+    """Small/cheap model for page classification.
+
+    DETECT_LLM_MODEL picks a smaller model; if unset it reuses the main model. Either way the call
+    gets the reduced DETECT_LLM_MAX_TOKENS budget. Key and base fall back to the main LLM's.
+    """
     if "detect" not in _cache:
         _cache["detect"] = _build(
-            settings.DETECT_LLM_MODEL,
+            settings.DETECT_LLM_MODEL or settings.LLM_MODEL,
             settings.DETECT_LLM_API_KEY or settings.LLM_API_KEY,
             settings.DETECT_LLM_API_BASE or settings.LLM_API_BASE,
-            settings.DETECT_LLM_EXTRA_BODY,
+            # A different detector model may be on another provider, so it only inherits the main
+            # model's provider params (e.g. GLM thinking off) when it is the same model.
+            settings.DETECT_LLM_EXTRA_BODY or ("" if _different_model() else settings.LLM_EXTRA_BODY),
+            temperature=settings.DETECT_LLM_TEMPERATURE,
+            max_tokens=settings.DETECT_LLM_MAX_TOKENS,
         )
     return _cache["detect"]

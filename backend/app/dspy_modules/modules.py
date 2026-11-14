@@ -2,14 +2,14 @@ import dspy
 
 from app.config import settings
 from app.dspy_modules.lm import get_detect_lm, get_lm
-from app.dspy_modules.signatures import DetectJobPage, ExtractJobMeta, ReviseResume, TailorResume
+from app.dspy_modules.signatures import DetectJobPage, ReviseResume, TailorResume
 from app.schemas import DetectOut, TailoredResume
 
 
-def detect_job_page(url: str, title: str, text: str) -> DetectOut:
+def detect_job_page(url: str, title: str, text: str, signals: str = "") -> DetectOut:
     with dspy.context(lm=get_detect_lm()):
         out = dspy.Predict(DetectJobPage)(
-            page_url=url, page_title=title, page_text=text[: settings.MAX_JOB_CHARS // 2]
+            page_url=url, page_title=title, page_text=text[: settings.DETECT_TEXT_CHARS + 50], page_signals=signals[:600]
         )
     return DetectOut(
         is_job=bool(out.is_job_posting),
@@ -19,12 +19,6 @@ def detect_job_page(url: str, title: str, text: str) -> DetectOut:
         reason=(out.reason or "").strip(),
         method="llm",
     )
-
-
-def extract_job_meta(url: str, title: str, text: str) -> tuple[str, str]:
-    with dspy.context(lm=get_detect_lm()):
-        out = dspy.Predict(ExtractJobMeta)(page_url=url, page_title=title, page_text=text[:3000])
-    return (out.job_title or "").strip(), (out.company or "").strip()
 
 
 def tailor_resume(source: str, job_title: str, company: str, jd: str) -> TailoredResume:

@@ -49,7 +49,7 @@ def eligible_users(user_filter: str):
     elif user_filter == "inactive":
         q = q.where(applied == 0)
     elif user_filter == "exhausted":
-        q = q.where(applied >= settings.FREE_APPLICATIONS)
+        q = q.where(applied >= settings.FREE_APPLICATIONS + User.paid_credits)
     elif user_filter != "all":
         raise ValueError(f"Unknown user_filter {user_filter!r}; use one of {FILTERS}")
     return q

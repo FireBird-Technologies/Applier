@@ -29,7 +29,7 @@ def client(monkeypatch):
     monkeypatch.setattr(apps_router, "tailor_resume", fake_tailor)
     monkeypatch.setattr(apps_router, "revise_resume", lambda s, c, j, i: c.model_copy(update={"summary": i}))
     monkeypatch.setattr(detect_service, "detect_job_page",
-                        lambda u, t, x: DetectOut(is_job=True, confidence=0.8, job_title="X", company="Y"))
+                        lambda u, t, x, s="": DetectOut(is_job=True, confidence=0.8, job_title="X", company="Y"))
     with SessionLocal() as db:
         u = User(google_sub="g1", email="a@b.c", name="A")
         db.add(u)
@@ -95,7 +95,7 @@ def test_dspy_structured_output():
     from dspy.utils import DummyLM
     from app.dspy_modules import modules
 
-    reply = {"plan": "ok", "resume": TailoredResume(name="Jane").model_dump_json()}
+    reply = {"reasoning": "ok", "resume": TailoredResume(name="Jane").model_dump_json()}
     lm = DummyLM([reply])
     modules.get_lm = lambda: lm
     out = modules.tailor_resume(RESUME, "BE", "Acme", JD)
