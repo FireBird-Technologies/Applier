@@ -1,4 +1,5 @@
-import { money, pricing } from "./site";
+import type { Pricing } from "./pricing";
+import { money } from "./site";
 
 export type Block = { type: "h2"; text: string } | { type: "p"; text: string } | { type: "ul"; items: string[] };
 
@@ -11,7 +12,7 @@ export interface Post {
   body: Block[];
 }
 
-export const posts: Post[] = [
+export const getPosts = (pricing: Pricing): Post[] => [
   {
     slug: "how-applier-tailors-your-resume",
     title: "How Applier tailors your resume without making things up",
@@ -81,7 +82,7 @@ export const posts: Post[] = [
   },
 ];
 
-export const getPost = (slug: string) => posts.find((p) => p.slug === slug);
+export const getPost = (posts: Post[], slug: string) => posts.find((p) => p.slug === slug);
 
 export const formatDate = (iso: string) =>
   new Date(iso + "T00:00:00Z").toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });

@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     JWT_EXPIRATION_HOURS: int = 720
 
     GOOGLE_CLIENT_ID: str = ""
+    # Anti-abuse: each browser install sends a random ID; one browser can belong to only one account.
+    REQUIRE_DEVICE_ID: bool = True
 
     # AI: everything is a LiteLLM model string, so swapping provider = env change.
     LLM_MODEL: str = "anthropic/claude-sonnet-5-5"

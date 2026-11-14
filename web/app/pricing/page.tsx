@@ -1,12 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ButtonLink } from "@/components/Button";
-import { money, pricing, site } from "@/lib/site";
+import { getPricing } from "@/lib/pricing";
+import { money, site } from "@/lib/site";
 
-export const metadata: Metadata = {
-  title: "Pricing",
-  description: `${pricing.freeCredits} free applications, then ${money(pricing.perApplication)} per application. No subscription.`,
-};
+export const revalidate = 300;
+
+export async function generateMetadata(): Promise<Metadata> {
+  const pricing = await getPricing();
+  return {
+    title: "Pricing",
+    description: `${pricing.freeCredits} free applications, then ${money(pricing.perApplication)} per application. No subscription.`,
+  };
+}
 
 const included = [
   "Job page detection with manual override",
@@ -15,8 +21,9 @@ const included = [
   "PDF, DOCX, Markdown and TXT downloads",
 ];
 
-export default function PricingPage() {
-  const packs = [pricing.minimumCredits, 50, 100, 250];
+export default async function PricingPage() {
+  const pricing = await getPricing();
+  const packs = pricing.suggested;
   return (
     <div className="mx-auto max-w-5xl px-6 pt-16 md:pt-24">
       <h1 className="text-4xl font-semibold md:text-5xl" style={{ letterSpacing: "-0.04em" }}>Pay only for applications you send</h1>

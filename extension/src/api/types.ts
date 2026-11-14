@@ -4,6 +4,7 @@ export interface Usage {
   free_limit: number; paid_credits: number; total: number; applied: number; remaining: number;
   level: CreditLevel; paywalled: boolean;
   price_per_application_usd: number; minimum_charge_usd: number; min_credits: number;
+  max_credits: number; suggested_credits: number[];
 }
 export interface AuthOut { access_token: string; user: User; usage: Usage }
 export interface SourceResume { id: number; filename: string; chars: number; preview: string }

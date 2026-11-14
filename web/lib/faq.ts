@@ -1,4 +1,5 @@
-import { money, pricing } from "./site";
+import type { Pricing } from "./pricing";
+import { money } from "./site";
 
 export interface FaqItem {
   id: string;
@@ -6,7 +7,7 @@ export interface FaqItem {
   a: string;
 }
 
-export const faq: FaqItem[] = [
+export const getFaq = (pricing: Pricing): FaqItem[] => [
   {
     id: "install",
     q: "How do I install Applier?",
@@ -51,6 +52,11 @@ export const faq: FaqItem[] = [
     id: "data",
     q: "What data does Applier read and keep?",
     a: "While the panel is open it reads the text of the tab you are on and sends it to our server to check whether it is a job posting. That text is not saved unless you generate a resume for the page, in which case the job description is kept with that application. We store your Google account basics, your source resume and your tailored resumes. Read the privacy page for details.",
+  },
+  {
+    id: "accounts",
+    q: "Can I use more than one account?",
+    a: "Each browser can be linked to one Applier account, which keeps the free applications fair for everyone. You can use your account on as many browsers as you like. If a browser is already linked to another account, sign in with that account instead.",
   },
   {
     id: "delete",

@@ -1,4 +1,4 @@
-/** Site-wide constants. Pricing mirrors the backend settings (FREE_APPLICATIONS, PRICE_PER_APPLICATION_USD, MINIMUM_CHARGE_USD). */
+/** Site-wide constants. Prices are NOT here: they come from the backend (see lib/pricing.ts). */
 export const site = {
   name: "Applier",
   tagline: "Apply to jobs with a resume that fits.",
@@ -10,15 +10,6 @@ export const site = {
   installIsExternal: Boolean(process.env.NEXT_PUBLIC_CHROME_STORE_URL),
   supportEmail: process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? "",
   updated: "November 14, 2026",
-};
-
-export const pricing = {
-  freeCredits: 10,
-  perApplication: 0.1,
-  minimumCharge: 3,
-  get minimumCredits() {
-    return Math.ceil(this.minimumCharge / this.perApplication);
-  },
 };
 
 export const money = (n: number) => `$${n.toFixed(2)}`;

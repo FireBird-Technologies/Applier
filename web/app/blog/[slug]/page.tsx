@@ -2,19 +2,21 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ButtonLink } from "@/components/Button";
-import { formatDate, getPost, posts } from "@/lib/posts";
+import { formatDate, getPost, getPosts } from "@/lib/posts";
+import { getPricing } from "@/lib/pricing";
 import { site } from "@/lib/site";
 
 type Params = { slug: string };
 
 export const dynamicParams = false;
+export const revalidate = 300;
 
-export function generateStaticParams(): Params[] {
-  return posts.map((p) => ({ slug: p.slug }));
+export async function generateStaticParams(): Promise<Params[]> {
+  return getPosts(await getPricing()).map((p) => ({ slug: p.slug }));
 }
 
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
-  const post = getPost((await params).slug);
+  const post = getPost(getPosts(await getPricing()), (await params).slug);
   if (!post) return {};
   return {
     title: post.title,
@@ -24,7 +26,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
 }
 
 export default async function PostPage({ params }: { params: Promise<Params> }) {
-  const post = getPost((await params).slug);
+  const post = getPost(getPosts(await getPricing()), (await params).slug);
   if (!post) notFound();
 
   return (

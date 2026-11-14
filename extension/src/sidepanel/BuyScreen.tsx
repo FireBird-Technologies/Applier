@@ -16,17 +16,18 @@ export function BuyScreen({ usage, onClose, onPurchased }: Props) {
   const minCharge = Math.round(usage.minimum_charge_usd * 100);
   const price = (n: number) => Math.max(minCharge, n * unit); // minimum charge applies to small purchases
 
-  const max = 500; // slider range; the server allows more, but this covers realistic purchases
-  const clamp = (n: number) => Math.min(max, Math.max(usage.min_credits, n));
-  const suggestions = Array.from(new Set([usage.min_credits, 50, 100, 250, max])).filter((n) => n >= usage.min_credits && n <= max).sort((a, b) => a - b);
-  const [credits, setCredits] = useState(clamp(50));
+  // Everything here comes from the server settings, so changing prices or pack sizes needs no extension update.
+  const suggestions = usage.suggested_credits;
+  const sliderMax = Math.min(usage.max_credits, Math.max(...suggestions));
+  const clamp = (n: number) => Math.min(sliderMax, Math.max(usage.min_credits, n));
+  const [credits, setCredits] = useState(clamp(suggestions.find((n) => n >= 50) ?? usage.min_credits));
   const [phase, setPhase] = useState<"choose" | "starting" | "waiting" | "done">("choose");
   const [error, setError] = useState("");
   const [added, setAdded] = useState(0);
   const startPaid = useRef(usage.paid_credits);
   const checkoutUrl = useRef("");
 
-  const valid = Number.isInteger(credits) && credits >= usage.min_credits && credits <= 2000;
+  const valid = Number.isInteger(credits) && credits >= usage.min_credits && credits <= usage.max_credits;
 
   const start = async () => {
     setPhase("starting"); setError("");
@@ -116,7 +117,7 @@ export function BuyScreen({ usage, onClose, onPurchased }: Props) {
           </div>
           <span className="font-mono text-[15px]">{money(price(credits))}</span>
         </div>
-        <input type="range" className="range" min={usage.min_credits} max={max} step={usage.min_credits >= 10 ? 10 : 1} value={credits}
+        <input type="range" className="range" min={usage.min_credits} max={sliderMax} step={usage.min_credits >= 10 ? 10 : 1} value={credits}
           aria-label="Number of credits" onChange={(e) => setCredits(clamp(Number(e.target.value)))} />
         <div className="flex items-center justify-between gap-1">
           {suggestions.map((n) => (

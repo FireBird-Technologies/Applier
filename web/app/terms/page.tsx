@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/Prose";
-import { money, pricing, site } from "@/lib/site";
+import { getPricing } from "@/lib/pricing";
+import { money, site } from "@/lib/site";
+
+export const revalidate = 300;
 
 export const metadata: Metadata = { title: "Terms", description: "The terms for using Applier." };
 
-export default function Terms() {
+export default async function Terms() {
+  const pricing = await getPricing();
   const contact = site.supportEmail ? <a className="underline" href={`mailto:${site.supportEmail}`}>{site.supportEmail}</a> : "the contact address in the extension's store listing";
   return (
     <LegalPage title="Terms" updated={site.updated}>
@@ -32,6 +36,10 @@ export default function Terms() {
 
       <h2>Acceptable use</h2>
       <p>Do not use Applier to submit false information, to break the law, to attack or overload the service, or to resell access to it.</p>
+      <p>
+        Each browser can be linked to one Applier account. Do not create several accounts to collect extra free applications. You may use
+        your account on more than one browser.
+      </p>
 
       <h2>Availability and changes</h2>
       <p>We may change, suspend or stop parts of the service, and we may update these terms. Continued use after an update means you accept it.</p>

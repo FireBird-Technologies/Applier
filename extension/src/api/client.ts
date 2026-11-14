@@ -1,4 +1,5 @@
 import { API_URL } from "../config";
+import { getDeviceId } from "../lib/device";
 import { clearToken, getToken } from "../lib/storage";
 import type { Application, AuthOut, Detect, Format, PageData, Resume, SourceResume } from "./types";
 
@@ -12,6 +13,7 @@ async function request(path: string, init: RequestInit = {}): Promise<Response> 
   const token = await getToken();
   const headers = new Headers(init.headers);
   if (token) headers.set("Authorization", `Bearer ${token}`);
+  headers.set("X-Device-Id", await getDeviceId());  // one browser, one account
   if (init.body && !(init.body instanceof FormData)) headers.set("Content-Type", "application/json");
 
   let res: Response;
@@ -21,7 +23,7 @@ async function request(path: string, init: RequestInit = {}): Promise<Response> 
     throw new ApiError(0, "Can't reach the Applier server.");
   }
   if (!res.ok) {
-    if (res.status === 401) await clearToken();
+    if (res.status === 401 || res.status === 403) await clearToken();  // 403: this browser belongs to another account
     let detail = res.statusText;
     try {
       const j = await res.json();

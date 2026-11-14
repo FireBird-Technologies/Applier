@@ -1,14 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { formatDate, posts } from "@/lib/posts";
+import { formatDate, getPosts } from "@/lib/posts";
+import { getPricing } from "@/lib/pricing";
+
+export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: "Blog",
   description: "How Applier works, written plainly: tailoring, one-page resumes, credits and pricing.",
 };
 
-export default function BlogIndex() {
-  const sorted = [...posts].sort((a, b) => b.date.localeCompare(a.date));
+export default async function BlogIndex() {
+  const sorted = [...getPosts(await getPricing())].sort((a, b) => b.date.localeCompare(a.date));
   return (
     <div className="mx-auto max-w-3xl px-6 pt-16 md:pt-24">
       <h1 className="text-4xl font-semibold md:text-5xl" style={{ letterSpacing: "-0.04em" }}>Blog</h1>

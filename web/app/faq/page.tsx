@@ -1,15 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { FaqList } from "@/components/FaqList";
-import { faq } from "@/lib/faq";
+import { getFaq } from "@/lib/faq";
+import { getPricing } from "@/lib/pricing";
 import { site } from "@/lib/site";
+
+export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: "FAQ",
   description: "Answers about installing Applier, how job detection works, pricing, privacy and more.",
 };
 
-export default function FaqPage() {
+export default async function FaqPage() {
+  const faq = getFaq(await getPricing());
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "FAQPage",

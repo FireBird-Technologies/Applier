@@ -2,9 +2,12 @@ import Link from "next/link";
 import { ButtonLink } from "@/components/Button";
 import { FaqList } from "@/components/FaqList";
 import { PanelMock } from "@/components/PanelMock";
-import { faq } from "@/lib/faq";
-import { money, pricing, site } from "@/lib/site";
-import { formatDate, posts } from "@/lib/posts";
+import { getFaq } from "@/lib/faq";
+import { formatDate, getPosts } from "@/lib/posts";
+import { getPricing, type Pricing } from "@/lib/pricing";
+import { money, site } from "@/lib/site";
+
+export const revalidate = 300; // prices come from the API; refresh them
 
 const steps = [
   { n: "01", title: "Sign in with Google", text: "One click in the side panel. No passwords to make or remember." },
@@ -13,7 +16,7 @@ const steps = [
   { n: "04", title: "Generate, adjust, download", text: "Preview the tailored resume, ask for changes or edit by hand, then download. Downloading is what counts as applied." },
 ];
 
-const features = [
+const makeFeatures = (pricing: Pricing) => [
   { title: "Always one page", text: "PDF and DOCX fit on a single page. Type shrinks to a readable minimum first, then the least important items go, and you are told which." },
   { title: "Only your facts", text: "The writer may reword and reorder, never invent employers, dates, degrees, numbers or skills." },
   { title: "Job page detection", text: "Reads the tab you are on and works out the role and company. Manual override and stop-scan are always one click away." },
@@ -22,7 +25,11 @@ const features = [
   { title: "Pay per application", text: `${pricing.freeCredits} free, then ${money(pricing.perApplication)} each. No subscription, and drafts are free.` },
 ];
 
-export default function Home() {
+export default async function Home() {
+  const pricing = await getPricing();
+  const features = makeFeatures(pricing);
+  const faq = getFaq(pricing);
+  const posts = getPosts(pricing);
   return (
     <>
       <section className="mx-auto grid max-w-5xl items-center gap-14 px-6 pb-8 pt-16 md:grid-cols-[1.15fr_1fr] md:pt-24">

@@ -1,5 +1,5 @@
 ﻿import { useCallback, useEffect, useState } from "react";
-import { api } from "../api/client";
+import { ApiError, api } from "../api/client";
 import type { SourceResume, Usage, User } from "../api/types";
 import { signInWithGoogle } from "../lib/auth";
 import { clearToken, getToken } from "../lib/storage";
@@ -30,7 +30,8 @@ export function App() {
       setUser(me.user); setUsage(me.usage);
       setSource(await api.getSource());
       setStage("app");
-    } catch {
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 403) setError(e.message);  // e.g. this browser belongs to another account
       setStage("signed-out");
     }
   }, []);
