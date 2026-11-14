@@ -3,6 +3,7 @@ import { api } from "../api/client";
 import type { Application, Detect, Format, PageData, Usage } from "../api/types";
 import { readActiveTab } from "../lib/extract";
 import { DownloadBar } from "./DownloadBar";
+import { Feedback } from "./Feedback";
 import { ExpandIcon } from "./Icons";
 import { ResumePreview } from "./ResumePreview";
 import { EDIT_STEPS, TailoringLoader } from "./TailoringLoader";
@@ -117,6 +118,10 @@ export function JobScreen({ usage, onUsage, onBuy, scanTick = 0 }: Props) {
     onUsage(); // generating is what spends the credit
   });
   const edit = () => run("edit", async () => { setApp(await api.edit(app!.id, instruction)); setInstruction(""); });
+  const rate = async (r: "up" | "down" | null) => {
+    const a = await api.rate(app!.id, r);
+    setApp((p) => (p ? { ...p, feedback: a.feedback } : a));  // keep the rest (notice, edits) as it is
+  };
   const undo = () => run("undo", async () => setApp(await api.undo(app!.id)));
   const download = (f: Format) => run(f, async () => {
     await api.download(app!.id, f);
@@ -227,6 +232,7 @@ export function JobScreen({ usage, onUsage, onBuy, scanTick = 0 }: Props) {
             </div>
             <ResumePreview r={app.resume} />
             {app.notice && <p className="border-l-2 border-black pl-2 text-[12px]">{app.notice}</p>}
+            <Feedback value={app.feedback} onRate={rate} />
           </div>
 
           <div>

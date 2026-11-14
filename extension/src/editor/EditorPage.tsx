@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api/client";
 import type { Application, Format, Resume, SourceDoc } from "../api/types";
 import { DownloadBar } from "../sidepanel/DownloadBar";
+import { Feedback } from "../sidepanel/Feedback";
 import { Logo } from "../sidepanel/Logo";
 import { ResumePreview } from "../sidepanel/ResumePreview";
 import { EDIT_STEPS, PARSE_STEPS, TailoringLoader } from "../sidepanel/TailoringLoader";
@@ -20,10 +21,11 @@ interface Doc {
   lastEdit: string;
   applied: boolean;
   notice: string;
+  feedback?: "up" | "down" | null;
 }
 const fromApp = (a: Application): Doc => ({
   title: [a.job_title, a.company].filter(Boolean).join(" at ") || "Tailored resume", resume: a.resume, version: a.version,
-  canUndo: !!a.can_undo, lastEdit: a.last_edit ?? "", applied: a.status === "applied", notice: a.notice ?? "",
+  canUndo: !!a.can_undo, lastEdit: a.last_edit ?? "", applied: a.status === "applied", notice: a.notice ?? "", feedback: a.feedback,
 });
 const fromSource = (d: SourceDoc): Doc => ({
   title: d.filename, resume: d.resume, version: d.version, canUndo: d.can_undo, lastEdit: d.last_edit, applied: false, notice: d.notice ?? "",
@@ -62,6 +64,26 @@ export function EditorPage() {
   const [busy, setBusy] = useState<"" | "save" | "edit" | "undo" | Format>("");
   const [instruction, setInstruction] = useState("");
   const [tab, setTab] = useState<"edit" | "preview">("edit");
+
+  // The ask bar follows you down the page: it sticks just under the header, and tightens up once you scroll.
+  const headerRef = useRef<HTMLElement>(null);
+  const [headerH, setHeaderH] = useState(0);
+  const [scrolled, setScrolled] = useState(false);
+  useLayoutEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const measure = () => setHeaderH(el.offsetHeight);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [doc]);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 60);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   const adopt = (d: Doc) => { setDoc(d); setDraft(d.resume); };
 
@@ -110,6 +132,11 @@ export function EditorPage() {
     if (dirty && doc) { setDraft(doc.resume); setMessage("Reverted unsaved changes"); return; }
     return run("undo", "Undone", async () => { adopt(await io.undo()); await announce(); });
   };
+  const rate = async (r: "up" | "down" | null) => {
+    const a = await api.rate(id, r);
+    setDoc((d) => (d ? { ...d, feedback: a.feedback } : d));
+    await announce(doc?.notice ?? "");  // the side panel shows the same rating
+  };
   const download = (f: Format) => run(f, "Downloaded", async () => {
     await persist();
     await api.download(id, f);
@@ -135,7 +162,7 @@ export function EditorPage() {
 
   return (
     <div className="min-h-screen text-[15px]">
-      <header className="sticky top-0 z-10 border-b border-gray-200 bg-white">
+      <header ref={headerRef} className="sticky top-0 z-10 border-b border-gray-200 bg-white">
         <div className="flex items-center justify-between gap-4 px-8 py-4">
           <div className="flex min-w-0 items-center gap-5">
             <Logo size={20} />
@@ -173,13 +200,14 @@ export function EditorPage() {
         <TailoringLoader title={isSource ? "" : doc.title} company="" steps={EDIT_STEPS} verb="Editing" hint="Usually just a few seconds. Keep this tab open." />
       ) : tab === "edit" ? (
         <>
-          {/* The ask bar spans the whole window */}
-          <section className="border-b border-gray-200 bg-white px-8 py-6">
+          {/* The ask bar spans the whole window and stays in reach while you scroll */}
+          <section className={`sticky z-[9] border-b border-gray-200 bg-white px-8 transition-[padding] duration-200 ${scrolled ? "py-3" : "py-6"}`}
+            style={{ top: headerH }}>
             <div className="flex w-full gap-3">
-              <input className="field flex-1 py-4 text-[16px]" value={instruction} placeholder="Ask for a change, e.g. make the summary shorter" disabled={!!busy}
+              <input className={`field flex-1 text-[16px] transition-[padding] duration-200 ${scrolled ? "py-2.5" : "py-4"}`} value={instruction} placeholder="Ask for a change, e.g. make the summary shorter" disabled={!!busy}
                 onChange={(e) => setInstruction(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && instruction.trim().length > 2 && ask()} />
-              <button className="btn-primary shrink-0 px-8 py-4 text-[15px]" disabled={!!busy || instruction.trim().length < 3} onClick={ask}>Apply</button>
+              <button className={`btn-primary shrink-0 px-8 text-[15px] transition-[padding] duration-200 ${scrolled ? "py-2.5" : "py-4"}`} disabled={!!busy || instruction.trim().length < 3} onClick={ask}>Apply</button>
             </div>
           </section>
           {isSource && (
@@ -201,6 +229,7 @@ export function EditorPage() {
               <p className="mt-3 text-[13px] text-gray-500">1 credit was used when this resume was generated. Edits and downloads are free and unlimited.</p>
             </section>
           )}
+          {!isSource && <Feedback value={doc.feedback} onRate={rate} />}
           <section>
             <ResumePreview r={draft} full />
             <p className="mt-3 text-[13px] text-gray-400">
