@@ -1,7 +1,9 @@
 ﻿export interface User { id: number; email: string; name: string; picture: string }
+export type CreditLevel = "ok" | "moderate" | "low" | "empty";
 export interface Usage {
-  free_limit: number; applied: number; remaining_free: number;
-  price_per_application_usd: number; minimum_charge_usd: number; paywalled: boolean;
+  free_limit: number; paid_credits: number; total: number; applied: number; remaining: number;
+  level: CreditLevel; paywalled: boolean;
+  price_per_application_usd: number; minimum_charge_usd: number; min_credits: number;
 }
 export interface AuthOut { access_token: string; user: User; usage: Usage }
 export interface SourceResume { id: number; filename: string; chars: number; preview: string }
@@ -23,6 +25,6 @@ export interface Resume {
 }
 export interface Application {
   id: number; job_url: string; job_title: string; company: string;
-  status: "draft" | "applied"; version: number; resume: Resume;
+  status: "draft" | "applied"; version: number; resume: Resume; notice?: string;
 }
 export type Format = "pdf" | "docx" | "md" | "txt";

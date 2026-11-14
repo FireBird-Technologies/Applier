@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
 import type { Application, Detect, Format, PageData, Usage } from "../api/types";
 import { readActiveTab } from "../lib/extract";
+import { ExpandIcon } from "./Icons";
+import { ResumeEditor } from "./ResumeEditor";
 import { ResumePreview } from "./ResumePreview";
 import { TailoringLoader } from "./TailoringLoader";
 
@@ -10,9 +12,10 @@ const FORMATS: Format[] = ["pdf", "docx", "md", "txt"];
 interface Props {
   usage: Usage;
   onUsage: () => void;
+  onBuy: () => void;
 }
 
-export function JobScreen({ usage, onUsage }: Props) {
+export function JobScreen({ usage, onUsage, onBuy }: Props) {
   const [page, setPage] = useState<PageData | null | undefined>(undefined); // undefined = scanning, null = unreadable
   const [det, setDet] = useState<Detect | null>(null);
   const [detecting, setDetecting] = useState(false);
@@ -24,6 +27,7 @@ export function JobScreen({ usage, onUsage }: Props) {
   const [app, setApp] = useState<Application | null>(null);
   const [busy, setBusy] = useState<"" | "generate" | "edit" | Format>("");
   const [instruction, setInstruction] = useState("");
+  const [editing, setEditing] = useState(false); // enlarged manual editor open
   const [error, setError] = useState("");
   const scanId = useRef(0);
   const abort = useRef<AbortController | null>(null);
@@ -149,10 +153,12 @@ export function JobScreen({ usage, onUsage }: Props) {
             {jd.trim().length < 100 && <p className="mt-1 text-[12px] text-gray-500">Add at least a few sentences of the job description.</p>}
           </div>
           {usage.paywalled ? (
-            <p className="border-l-2 border-black pl-2">
-              You've used all {usage.free_limit} free applications. Paid plans are coming soon: ${usage.price_per_application_usd.toFixed(2)} per
-              application, ${usage.minimum_charge_usd.toFixed(2)} minimum.
-            </p>
+            <div className="space-y-2">
+              <p className="border-l-2 border-black pl-2">
+                You're out of credits. ${usage.price_per_application_usd.toFixed(2)} per application, ${usage.minimum_charge_usd.toFixed(2)} minimum.
+              </p>
+              <button className="btn-primary w-full" onClick={onBuy}>Buy credits</button>
+            </div>
           ) : (
             <button className="btn-primary w-full" disabled={!!busy || jd.trim().length < 100} onClick={generate}>
               Generate tailored resume
@@ -173,7 +179,16 @@ export function JobScreen({ usage, onUsage }: Props) {
             </span>
           </div>
 
-          <ResumePreview r={app.resume} />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="label mb-0">Preview (1 page)</label>
+              <button className="btn-ghost gap-1.5 px-2.5 py-1 text-[12px]" onClick={() => setEditing(true)} aria-label="Enlarge and edit resume">
+                <ExpandIcon /> Enlarge &amp; edit
+              </button>
+            </div>
+            <ResumePreview r={app.resume} />
+            {app.notice && <p className="border-l-2 border-black pl-2 text-[12px]">{app.notice}</p>}
+          </div>
 
           <div>
             <label className="label">Suggest an edit</label>
@@ -198,13 +213,18 @@ export function JobScreen({ usage, onUsage }: Props) {
             <p className="mt-2 text-[12px] text-gray-500">
               {app.status === "applied"
                 ? "Counted as applied. Further downloads and edits are free."
-                : "Downloading marks this job as applied and uses 1 of your free applications."}
+                : "Downloading marks this job as applied and uses 1 credit."}
             </p>
           </div>
         </div>
       )}
 
       {error && <p className="border-l-2 border-black pl-2">{error}</p>}
+
+      {editing && app && (
+        <ResumeEditor app={app} onClose={() => setEditing(false)}
+          onSaved={(saved) => { setApp(saved); setEditing(false); }} />
+      )}
     </div>
   );
 }

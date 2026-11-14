@@ -33,25 +33,21 @@ Google setup: create a **Web application** OAuth client and add
 `https://<EXTENSION_ID>.chromiumapp.org/` as a redirect URI (the ID is shown on chrome://extensions).
 Add a `key` to `public/manifest.json` so the ID stays stable across machines. Use the same client ID in both `.env` files.
 
-## Usage and billing
-Quota = count of applications with status `applied`. Stripe is not wired yet: after the free limit the API
-returns 402. Planned: $0.10 per application, $3 minimum charge (`PRICE_PER_APPLICATION_USD`, `MINIMUM_CHARGE_USD`).
+## Credits and billing (Stripe)
+1 credit = 1 application (the first download of a tailored resume). Everyone gets `FREE_APPLICATIONS` (10) free;
+purchased credits add to that. Pricing: `PRICE_PER_APPLICATION_USD` ($0.10 each), `MINIMUM_CHARGE_USD` ($3 = 30 credits minimum).
+The extension shows a meter: "moderate" once 50% is used, "low, upgrade now" at 20% left, then "out of credits".
 
-## Job-page detector
-Pages with `JobPosting` JSON-LD skip classification. Otherwise one small LLM call decides job vs. not and extracts
-role/company. The extension cleans the page text and the backend cleans it again (readable characters only, no URLs,
-junk tokens or repeated menu lines), then sends the first and last part of it, up to `DETECT_TEXT_CHARS` (3000).
-The call runs on `DETECT_LLM_MODEL` (a smaller model; defaults to `LLM_MODEL`) with `DETECT_LLM_MAX_TOKENS=600`.
+How checkout works: **Buy credits** -> backend creates a Stripe Checkout Session -> the extension opens Stripe's hosted page in a
+new browser tab -> after paying, Stripe redirects to `/billing/success` (and sends a signed webhook) -> credits are added
+(once, idempotently) and the panel updates by itself.
 
-## Testing the extension
-1. Backend: `uvicorn app.main:app --reload`, then check http://localhost:8000/api/health (shows the active model).
-2. `cd extension && npm run dev` (rebuilds on save). In `chrome://extensions` enable Developer mode -> Load unpacked -> `extension/dist`.
-   After a rebuild, click the reload icon on the extension card, then reopen the side panel.
-3. Click the toolbar icon to open the side panel. Walk the flow: sign in -> add resume -> open a job page -> generate -> edit -> download.
-4. Debug: right-click the side panel -> Inspect (UI + network). Backend logs show LLM errors.
-Without Google OAuth set up yet, mint a dev token (`python -c "from app.auth import create_access_token as t; print(t(1))"`
-after inserting a user) and paste it via the side panel's console:
-`chrome.storage.local.set({applier_token: "<jwt>"})`, then reopen the panel.
+Local setup (test mode):
+1. `STRIPE_SECRET_KEY=sk_test_...` in `backend/.env` (dashboard.stripe.com/test/apikeys). `PUBLIC_API_URL` must be reachable by your browser.
+2. Optional, for the webhook: `stripe listen --forward-to localhost:8000/api/billing/webhook`, then put the printed `whsec_...` in `STRIPE_WEBHOOK_SECRET`.
+   Without it the success-page redirect still credits the account.
+3. Pay with test card `4242 4242 4242 4242`, any future date, any CVC.
+Production: add the webhook endpoint `https://<api>/api/billing/webhook` for `checkout.session.completed`.
 
 ## Email (Resend)
 Set `RESEND_API_KEY` and `EMAIL_FROM` (domain verified in Resend). Without a key emails are logged and skipped.

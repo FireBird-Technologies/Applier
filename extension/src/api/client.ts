@@ -1,6 +1,6 @@
 import { API_URL } from "../config";
 import { clearToken, getToken } from "../lib/storage";
-import type { Application, AuthOut, Detect, Format, PageData, SourceResume } from "./types";
+import type { Application, AuthOut, Detect, Format, PageData, Resume, SourceResume } from "./types";
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -44,6 +44,7 @@ export const api = {
     fd.append("file", file);
     return json<SourceResume>("/api/source/upload", { method: "POST", body: fd });
   },
+  getSourceContent: () => json<{ filename: string; text: string }>("/api/source/content"),
   pasteSource: (text: string) => post<SourceResume>("/api/source/text", { text }),
   detect: (p: PageData, signal?: AbortSignal) =>
     json<Detect>("/api/detect", {
@@ -56,6 +57,11 @@ ${p.text.slice(-2500)}` : p.text }),
     }),
   generate: (p: PageData, job_title: string, company: string) =>
     post<Application>("/api/applications", { ...p, job_title, company }),
+  /** Save hand edits. The server keeps the resume to one page and reports anything it removed in `notice`. */
+  saveResume: (id: number, resume: Resume) =>
+    json<Application>(`/api/applications/${id}`, { method: "PUT", body: JSON.stringify({ resume }) }),
+  createCheckout: (credits: number) =>
+    post<{ url: string; credits: number; amount_cents: number }>("/api/billing/checkout", { credits }),
   edit: (id: number, instruction: string) => post<Application>(`/api/applications/${id}/edit`, { instruction }),
   /** Downloading is what marks the application as applied (server-side). */
   async download(id: number, format: Format): Promise<void> {

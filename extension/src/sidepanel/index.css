@@ -28,3 +28,11 @@ body { margin: 0; font-size: 13px; line-height: 1.45; }
   .loader-bar { animation: none; width: 40%; }
   .fade-in { animation: none; }
 }
+
+/* Success tick: the circle draws, then the check. */
+.tick-circle { stroke-dasharray: 151; stroke-dashoffset: 151; animation: applier-draw 0.5s ease-out forwards; }
+.tick-check { stroke-dasharray: 40; stroke-dashoffset: 40; animation: applier-draw 0.35s 0.45s ease-out forwards; }
+@keyframes applier-draw { to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .tick-circle, .tick-check { animation: none; stroke-dashoffset: 0; }
+}

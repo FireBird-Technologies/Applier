@@ -3,18 +3,24 @@ import { api } from "../api/client";
 import type { SourceResume, Usage, User } from "../api/types";
 import { signInWithGoogle } from "../lib/auth";
 import { clearToken, getToken } from "../lib/storage";
+import { BuyScreen } from "./BuyScreen";
+import { CreditsBanner, UsagePill } from "./Credits";
+import { EyeIcon } from "./Icons";
 import { JobScreen } from "./JobScreen";
 import { Logo, LogoMark } from "./Logo";
 import { SourceScreen } from "./SourceScreen";
+import { SourceViewer } from "./SourceViewer";
 
 type Stage = "boot" | "signed-out" | "app";
+type View = "main" | "source" | "buy";
 
 export function App() {
   const [stage, setStage] = useState<Stage>("boot");
+  const [view, setView] = useState<View>("main");
+  const [viewingSource, setViewingSource] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [usage, setUsage] = useState<Usage | null>(null);
   const [source, setSource] = useState<SourceResume | null>(null);
-  const [editingSource, setEditingSource] = useState(false);
   const [error, setError] = useState("");
   const [signingIn, setSigningIn] = useState(false);
 
@@ -35,8 +41,9 @@ export function App() {
     setSigningIn(true); setError("");
     try { await signInWithGoogle(); await load(); } catch (e) { setError((e as Error).message); } finally { setSigningIn(false); }
   };
-  const signOut = async () => { await clearToken(); setUser(null); setSource(null); setStage("signed-out"); };
-  const refreshUsage = () => api.me().then((m) => setUsage(m.usage)).catch(() => {});
+  const signOut = async () => { await clearToken(); setUser(null); setSource(null); setView("main"); setStage("signed-out"); };
+  const refreshUsage = useCallback(() => { api.me().then((m) => setUsage(m.usage)).catch(() => {}); }, []);
+  const closeBuy = useCallback(() => setView("main"), []);
 
   if (stage === "boot") return <div className="p-4 text-gray-500">Loading...</div>;
 
@@ -58,25 +65,46 @@ export function App() {
     );
   }
 
-  const needsSource = !source || editingSource;
+  const needsSource = !source || view === "source";
+  const buy = () => setView("buy");
+
   return (
     <div className="min-h-screen">
-      <header className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
-        <Logo />
-        <div className="flex items-center gap-3 text-[12px]">
-          {usage && <span className="rounded-full border border-gray-200 px-2 py-0.5 font-mono">{usage.remaining_free}/{usage.free_limit} free</span>}
-          {source && !editingSource && <button className="text-gray-500 hover:text-black" onClick={() => setEditingSource(true)}>Resume</button>}
-          <button className="text-gray-500 hover:text-black" onClick={signOut} title={user?.email}>Sign out</button>
+      <header className="space-y-2 border-b border-gray-200 px-4 py-3">
+        <div className="flex items-center justify-between gap-2">
+          <Logo />
+          <div className="flex items-center gap-2">
+            {usage && <UsagePill usage={usage} />}
+            <button className="btn-primary px-2.5 py-1 text-[12px]" onClick={buy}>Buy credits</button>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 text-[12px] text-gray-500">
+          {source && (
+            <span className="inline-flex items-center gap-1">
+              <button className="hover:text-black" onClick={() => setView("source")}>Resume</button>
+              <button className="rounded p-1 hover:bg-gray-100 hover:text-black" onClick={() => setViewingSource(true)}
+                aria-label="View source resume" title="View source resume"><EyeIcon size={15} /></button>
+            </span>
+          )}
+          <button className="hover:text-black" onClick={signOut} title={user?.email}>Sign out</button>
         </div>
       </header>
+
+      {usage && view !== "buy" && <CreditsBanner usage={usage} onBuy={buy} />}
+
       <main className="p-4">
-        {needsSource ? (
-          <SourceScreen current={source} onSaved={(s) => { setSource(s); setEditingSource(false); }}
-            onCancel={source ? () => setEditingSource(false) : undefined} />
+        {view === "buy" && usage ? (
+          <BuyScreen usage={usage} onClose={closeBuy} onPurchased={setUsage} />
+        ) : needsSource ? (
+          <SourceScreen current={source} onView={() => setViewingSource(true)}
+            onSaved={(s) => { setSource(s); setView("main"); }}
+            onCancel={source ? () => setView("main") : undefined} />
         ) : (
-          usage && <JobScreen usage={usage} onUsage={refreshUsage} />
+          usage && <JobScreen usage={usage} onUsage={refreshUsage} onBuy={buy} />
         )}
       </main>
+
+      {viewingSource && <SourceViewer onClose={() => setViewingSource(false)} />}
     </div>
   );
 }
