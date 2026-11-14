@@ -5,9 +5,9 @@ export const site = {
   description:
     "Applier is a Chrome extension that detects a job posting and writes a one-page resume tailored to it, using only the facts in your own resume.",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
-  // Until the store listing exists, "Add to Chrome" points at the install steps.
-  installUrl: process.env.NEXT_PUBLIC_CHROME_STORE_URL || "/faq#install",
-  installIsExternal: Boolean(process.env.NEXT_PUBLIC_CHROME_STORE_URL),
+  // The Chrome Web Store listing. Set NEXT_PUBLIC_CHROME_STORE_URL to override it (or to "" to fall back to the install steps).
+  installUrl: (process.env.NEXT_PUBLIC_CHROME_STORE_URL ?? "https://chromewebstore.google.com/detail/pdclipieihbelafeihehmnpdiodfomae") || "/faq#install",
+  installIsExternal: (process.env.NEXT_PUBLIC_CHROME_STORE_URL ?? "https://chromewebstore.google.com/detail/pdclipieihbelafeihehmnpdiodfomae") !== "",
   supportEmail: process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "support@applier.site",
   updated: "November 14, 2026",
 };
