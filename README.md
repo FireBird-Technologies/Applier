@@ -91,7 +91,7 @@ All numbers come from env: `FREE_APPLICATIONS`, `PRICE_PER_APPLICATION_USD`, `MI
 (set `API_URL` in `web/.env.local`; pages refresh every 5 minutes). Restart the API after changing them.
 
 ## Editing resumes
-The enlarge icon (tailored resume) and the eye icon (source resume) open a full-tab editor with Edit and Preview tabs.
+The pencil icon (tailored resume) and the eye icon (source resume) open a full-tab editor with Edit and Preview tabs.
 Sections can be removed, moved up or down and added back; entries inside a section can be moved too. Every AI or manual edit is
 undoable, and the AI is told your earlier requests so it does not undo them. The source resume is read into sections by the AI in the
 background right after you upload it, so the eye icon opens instantly (if the background step failed, or you open it

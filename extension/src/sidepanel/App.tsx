@@ -6,7 +6,6 @@ import { clearDetectCache } from "../lib/detectCache";
 import { clearToken, getToken } from "../lib/storage";
 import { BuyScreen } from "./BuyScreen";
 import { CreditsBanner, UsagePill } from "./Credits";
-import { EyeIcon } from "./Icons";
 import { JobScreen } from "./JobScreen";
 import { Logo, LogoMark } from "./Logo";
 import { SourceScreen } from "./SourceScreen";
@@ -99,11 +98,7 @@ export function App() {
         </div>
         <div className="flex items-center gap-3 text-[12px] text-gray-500">
           {source && (
-            <span className="inline-flex items-center gap-1">
-              <button className="hover:text-black" onClick={() => setView("source")}>Resume</button>
-              <button className="p-1 hover:text-black" onClick={openSource}
-                aria-label="View and edit source resume" title="View and edit source resume"><EyeIcon size={15} /></button>
-            </span>
+            <button className="hover:text-black" onClick={() => setView("source")}>Resume</button>
           )}
           {source && <button className="hover:text-black" onClick={startScan} title="Scan the current tab for a job posting">Scan</button>}
           <button className="hover:text-black" onClick={signOut} title={user?.email}>Sign out</button>

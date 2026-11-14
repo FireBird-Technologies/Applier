@@ -49,7 +49,7 @@ function makeIo(isSource: boolean, id: number) {
 
 /**
  * Full-tab editor with two tabs at the top: Edit and Preview. Each takes the whole window.
- * Opened from the side panel: the enlarge icon on a tailored resume, or the eye icon for the source resume.
+ * Opened from the side panel: the pencil icon on a tailored resume, or the eye icon for the source resume.
  */
 export function EditorPage() {
   const params = new URLSearchParams(location.search);
