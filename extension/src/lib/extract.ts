@@ -4,7 +4,7 @@ import type { PageData } from "../api/types";
  * Injected into the page via chrome.scripting.executeScript, so it must be
  * fully self-contained (no imports or outer-scope references).
  */
-function readPage() {
+async function readPage() {
   // Readable characters only: no control/zero-width/private-use chars, emoji, URLs or junk tokens;
   // collapsed whitespace; repeated short lines (menus) dropped.
   const clean = (s: string) => {
@@ -55,6 +55,88 @@ function readPage() {
     try { visit(JSON.parse(el.textContent || "")); } catch { /* ignore malformed JSON-LD */ }
   });
 
+  // LinkedIn, signed in: no JobPosting data, and the open job usually sits beside a list of other jobs, so the
+  // whole page reads like a search page. Read only the open job. Class names there change often, so each lookup
+  // has fallbacks that do not depend on them.
+  const linkedIn = async () => {
+    if (!/(^|\.)linkedin\.com$/.test(location.hostname) || !location.pathname.startsWith("/jobs")) return null;
+    const idIn = (s: string) => s.match(/\/jobs\/view\/(?:[^/?#]*-)?(\d+)/)?.[1] ?? "";
+    const jobId = () => new URLSearchParams(location.search).get("currentJobId") || idIn(location.pathname);
+    const first = (sels: string[], within: ParentNode = document) => {
+      for (const s of sels) {
+        const el = within.querySelector(s) as HTMLElement | null;
+        if (el) return el;
+      }
+      return null;
+    };
+    const line = (el: Element | null | undefined) =>
+      (((el as HTMLElement | null)?.innerText || el?.textContent || "").trim().split("\n")[0] || "").trim();
+
+    const findDescription = () => {
+      const known = first(["#job-details", ".jobs-description__content", ".jobs-description-content__text", ".jobs-box__html-content",
+        ".show-more-less-html__markup", ".description__text", '[data-testid="expandable-text-box"]']);
+      if (known && known.innerText.trim().length > 200) return known;
+      const heading = Array.from(document.querySelectorAll("h2, h3")).find((h) => /^about the job$/i.test((h.textContent || "").trim()));
+      let el = heading?.parentElement ?? null;
+      for (let i = 0; el && i < 4 && !el.matches("main, body, [role=main]"); i++, el = el.parentElement) {
+        if (el.innerText.trim().length > 300) return el;
+      }
+      return null;
+    };
+    const paneOf = (d: HTMLElement) =>
+      d.closest(".jobs-search__job-details--container, .jobs-details, .job-view-layout, .scaffold-layout__detail") as HTMLElement | null;
+    // After clicking another job in the list the URL changes first and the old job stays on screen for a moment.
+    const stale = (d: HTMLElement) => {
+      const id = new URLSearchParams(location.search).get("currentJobId");
+      const shown = idIn(paneOf(d)?.querySelector('h1 a[href*="/jobs/view/"], h2 a[href*="/jobs/view/"]')?.getAttribute("href") || "");
+      return !!id && !!shown && shown !== id;
+    };
+
+    // Wait (about 3.5s at most) until the open job has loaded and stopped changing.
+    // The previous read is kept on the page (this script's own scope), so a description that has not changed
+    // although the job id has is recognised as the old job still showing.
+    const w = window as unknown as { __applierLast?: { id: string; desc: string } };
+    const prev = w.__applierLast;
+    let d = findDescription();
+    if (jobId()) {
+      let last = "";
+      for (let i = 0; i < 12; i++) {
+        const now = d ? d.innerText.trim() : "";
+        const oldJob = !!d && (stale(d) || (!!prev && prev.id !== jobId() && prev.desc === now));
+        if (d && now.length > 200 && now === last && !oldJob) break;
+        last = now;
+        await new Promise((r) => setTimeout(r, 300));
+        d = findDescription();
+      }
+    }
+    if (!d) return null;
+    w.__applierLast = { id: jobId(), desc: d.innerText.trim() };
+
+    const id = jobId();
+    const pane = paneOf(d);
+    const onViewPage = /^\/jobs\/view\//.test(location.pathname);
+    const titleParts = document.title.replace(/^\(\d+\+?\)\s*/, "").split(" | "); // "Role | Company | LinkedIn"
+    // The open job's card in the list reads "Selected, <role>", then the role again, then the company.
+    const lines = (document.body.innerText || "").split("\n").map((l) => l.trim()).filter(Boolean);
+    const at = lines.findIndex((l) => /^Selected, \S/.test(l));
+    const cardTitle = at < 0 ? "" : lines[at].replace(/^Selected, /, "").replace(/\s*\(Verified job\)$/i, "").trim();
+    const cardCompany = at < 0 ? "" : lines.slice(at + 1, at + 3).find((l) => l !== cardTitle && !/\(Verified job\)$/i.test(l)) ?? "";
+    const title =
+      line(first([".job-details-jobs-unified-top-card__job-title", ".jobs-unified-top-card__job-title", ".top-card-layout__title", ".topcard__title"])) ||
+      line(pane?.querySelector("h1")) ||
+      cardTitle ||
+      (id ? line(document.querySelector(`a[href*="/jobs/view/${id}"]`)) : "") ||
+      (onViewPage ? line(document.querySelector("h1")) || (titleParts.length >= 3 ? titleParts[0].trim() : "") : "");
+    const company =
+      line(first([".job-details-jobs-unified-top-card__company-name", ".jobs-unified-top-card__company-name", ".topcard__org-name-link"])) ||
+      line(Array.from(pane?.querySelectorAll('a[href*="/company/"]') ?? []).find((a) => (a.textContent || "").trim())) ||
+      (cardTitle && cardTitle === title ? cardCompany : "") ||
+      (onViewPage && titleParts.length >= 3 ? titleParts[1].trim() : "");
+    return { title, company, description: clean(d.innerText), url: id ? `https://www.linkedin.com/jobs/view/${id}/` : location.href };
+  };
+  const li = structured ? null : await linkedIn();
+  if (li?.title) structured = { title: li.title, hiringOrganization: li.company, description: li.description };
+
   const root = (document.querySelector("main, article, [role=main]") as HTMLElement | null) ?? document.body;
   let text = clean(root.innerText || "");
   if (text.length < 500) text = clean(document.body.innerText || "");
@@ -68,6 +150,7 @@ function readPage() {
 
   const jd = (structured as any)?.description as string | undefined;
   if (jd && jd.length > 200) text = jd; // cleanest source when the site provides it
+  if (li && li.description.length > 200) text = li.description; // only the open job, not the list beside it
 
   // Cheap hints from the HTML that a classifier can use: meta tags, main heading, apply/upload controls.
   const meta = (sel: string) => (document.querySelector(sel) as HTMLMetaElement | null)?.content?.trim() ?? "";
@@ -84,7 +167,7 @@ function readPage() {
     `job_posting_structured_data=${!!structured}`,
   ].join("\n").slice(0, 1500);
 
-  return { url: location.href, title: document.title, text: text.slice(0, 15000), structured, signals };
+  return { url: li?.url ?? location.href, title: document.title, text: text.slice(0, 15000), structured, signals };
 }
 
 export async function readActiveTab(): Promise<PageData | null> {
