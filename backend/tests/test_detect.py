@@ -35,6 +35,43 @@ def test_llm_receives_clean_trimmed_text(monkeypatch):
     assert seen["signals"] == "apply_buttons=1"
 
 
+POSTING = "Responsibilities\nBuild APIs.\nRequirements\n5 years of experience with Python.\nQualifications\nBS degree.\n"
+NO = DetectOut(is_job=False, confidence=0.8, reason="Looks like a search page", method="llm")
+
+
+def test_clear_posting_overrides_a_model_no(monkeypatch):
+    monkeypatch.setattr(d, "detect_job_page", lambda *a: NO)
+    text = "Jobs near you\n" + POSTING + "filler words here. " * 30
+    out = d.detect(PageIn(text=text, signals="h1=Backend Engineer\napply_buttons=1\nresume_upload_field=false"))
+    assert (out.is_job, out.job_title, out.method) == (True, "Backend Engineer", "llm")
+    assert out.confidence == 0.5
+
+
+def test_model_no_stands_without_clear_evidence(monkeypatch):
+    monkeypatch.setattr(d, "detect_job_page", lambda *a: NO)
+    filler = "filler words here. " * 30
+    # job sections but no way to apply; a way to apply but no job sections; a list of jobs (many apply buttons)
+    assert d.detect(PageIn(text=POSTING + filler, signals="apply_buttons=0\nresume_upload_field=false")).is_job is False
+    assert d.detect(PageIn(text=filler, signals="apply_buttons=1")).is_job is False
+    assert d.detect(PageIn(text=POSTING + filler, signals="apply_buttons=25")).is_job is False
+
+
+def test_llm_sees_the_job_description_in_the_middle_of_a_long_page(monkeypatch):
+    seen = {}
+
+    def fake(url, title, text, signals=""):
+        seen["text"] = text
+        return DetectOut(is_job=True, confidence=0.9, method="llm")
+
+    monkeypatch.setattr(d, "detect_job_page", fake)
+    monkeypatch.setattr(d.settings, "DETECT_TEXT_CHARS", 1000)
+    listing = "".join(f"Job card number {i} in the list on the left side of the page.\n" for i in range(80))
+    footer = "".join(f"Footer link number {i} at the bottom of the page.\n" for i in range(40))
+    d.detect(PageIn(text=listing + POSTING + footer))
+    assert "Responsibilities" in seen["text"] and "Qualifications" in seen["text"]
+    assert seen["text"].startswith("Job card number 0") and len(seen["text"]) <= 1010
+
+
 def test_clean_text_readable_only():
     raw = "Hello &amp; welcome ​to\x00 <b>Acme</b> \U0001F389\nMenu\nMenu\nMenu\n\n\n\nBody https://a.co/x end"
     out = clean_text(raw)

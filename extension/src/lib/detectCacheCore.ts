@@ -9,6 +9,13 @@ export interface Entry {
 
 export const MAX_ENTRIES = 300;
 export const TTL_MS = 7 * 24 * 60 * 60 * 1000;
+// A "not a job" verdict is trusted for a much shorter time: it may have come from a page that was still loading,
+// and a wrong one would otherwise hide a real job for a week.
+export const NEGATIVE_TTL_MS = 60 * 60 * 1000;
+
+/** Still usable? The user's own answer and "is a job" verdicts last the full time, the detector's "no" does not. */
+export const fresh = (e: Entry, now = Date.now()): boolean =>
+  now - e.at <= (e.override !== undefined || e.v.is_job ? TTL_MS : NEGATIVE_TTL_MS);
 
 // Tracking parameters never change what a page is. Everything else may (job sites put the job id in the query).
 const TRACKING = /^(utm_.*|gclid|fbclid|msclkid|mc_cid|mc_eid|igshid|ref|ref_src|refid|trk|trackingid|_hsenc|_hsmi)$/i;

@@ -51,6 +51,21 @@ def trim(s: str, limit: int) -> str:
     return cut.rstrip()
 
 
+def trim_focus(s: str, limit: int, pattern: re.Pattern) -> str:
+    """Keep the start, the end, and the stretch in between where `pattern` matches most often. On pages that open
+    with menus or a list of other items, the part that matters is in the middle and head + tail would miss it."""
+    if len(s) <= limit:
+        return s
+    head_n, tail_n = int(limit * 0.3), int(limit * 0.2)
+    mid_n = limit - head_n - tail_n
+    hits = [m.start() for m in pattern.finditer(s, head_n, len(s) - tail_n)]
+    if not hits:
+        return trim_head_tail(s, limit)
+    best = max(hits, key=lambda h: sum(1 for x in hits if h <= x < h + mid_n))
+    start = min(max(head_n, best - 150), len(s) - tail_n - mid_n)  # a little context before the first match
+    return f"{trim(s, head_n)}\n...\n{s[start:start + mid_n].strip()}\n...\n{s[-tail_n:].strip()}"
+
+
 def trim_head_tail(s: str, limit: int) -> str:
     """Keep the start (title, summary) and the end (apply section, benefits) of a long page."""
     if len(s) <= limit:

@@ -173,10 +173,26 @@ async function readPage() {
 export async function readActiveTab(): Promise<PageData | null> {
   const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
   if (!tab?.id || !tab.url || !/^https?:/.test(tab.url)) return null; // chrome://, web store, etc.
+  let top: PageData | null;
   try {
     const [res] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: readPage });
-    return (res?.result as PageData) ?? null;
+    top = (res?.result as PageData) ?? null;
   } catch {
     return null;
   }
+  if (!top || top.structured || top.text.length >= 1500) return top;
+
+  // A nearly empty page often shows the job inside an embedded frame (company career sites that embed their
+  // applicant tracking system). Use the frame's content, keeping this tab's address and title.
+  try {
+    const frames = await chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, func: readPage });
+    const inner = frames
+      .filter((f) => f.frameId !== 0 && f.result)
+      .map((f) => f.result as PageData)
+      .sort((a, b) => Number(!!b.structured) - Number(!!a.structured) || b.text.length - a.text.length)[0];
+    if (inner && (inner.structured || inner.text.length > Math.max(500, top.text.length * 2))) {
+      return { ...top, text: inner.text, structured: inner.structured, signals: inner.signals };
+    }
+  } catch { /* a frame that cannot be read: keep what the page itself gave */ }
+  return top;
 }

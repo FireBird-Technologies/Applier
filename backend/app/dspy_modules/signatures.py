@@ -4,9 +4,16 @@ from app.schemas import TailoredResume
 
 
 class DetectJobPage(dspy.Signature):
-    """Decide whether a web page is a single job posting/application page.
-    Listing/search pages, company career landing pages, articles and unrelated
-    sites are NOT job postings. If it is one, extract the role title and company."""
+    """Decide whether a web page shows the description of one specific job, so a resume can be tailored to it.
+
+    Answer yes whenever the text contains one job's own description (its duties, requirements or qualifications),
+    even if the page also shows a list of other jobs beside it, a search box, an application form, or a lot of
+    navigation, and even if the description is partly cut off. The page text is a sample of the page (start,
+    middle and end), so judge by what is there and by the signals.
+    Answer no only when no single job is described: pure search or listing pages with just titles and snippets,
+    company career landing pages, articles, profiles and unrelated sites.
+    A missed job posting costs the user much more than a wrong yes, so when unsure answer yes with a lower
+    confidence. If it is a job posting, extract the role title and company."""
 
     page_url: str = dspy.InputField()
     page_title: str = dspy.InputField()

@@ -1,5 +1,5 @@
 import type { Detect } from "../api/types";
-import { STUB, TTL_MS, cacheable, normalizeUrl, prune, type Entry } from "./detectCacheCore";
+import { STUB, cacheable, fresh, normalizeUrl, prune, type Entry } from "./detectCacheCore";
 
 /**
  * Remembers, on this device only, whether each page was a job posting, so scanning a page again (switching tabs,
@@ -14,7 +14,7 @@ const save = (map: Record<string, Entry>) => chrome.storage.local.set({ [KEY]: p
 
 export async function getCached(url: string): Promise<Entry | null> {
   const e = (await load())[normalizeUrl(url)];
-  return e && Date.now() - e.at <= TTL_MS ? e : null;
+  return e && fresh(e) ? e : null;
 }
 
 /** Remember the detector's verdict. A fresh verdict replaces any earlier manual override for that page. */
