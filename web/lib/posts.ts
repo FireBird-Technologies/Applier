@@ -1,7 +1,12 @@
 import type { Pricing } from "./pricing";
 import { money } from "./site";
 
-export type Block = { type: "h2"; text: string } | { type: "p"; text: string } | { type: "ul"; items: string[] };
+export type Block =
+  | { type: "h2"; text: string }
+  | { type: "p"; text: string }
+  | { type: "ul"; items: string[] }
+  | { type: "ol"; items: string[] }
+  | { type: "video" }; // the 30-second demo (lib/site.ts demoVideo)
 
 export interface Post {
   slug: string;
@@ -9,10 +14,117 @@ export interface Post {
   description: string;
   date: string; // ISO
   minutes: number;
+  keywords?: string[]; // search terms this post is written for (from DataForSEO research)
   body: Block[];
 }
 
 export const getPosts = (pricing: Pricing): Post[] => [
+  {
+    slug: "how-to-tailor-your-resume-to-a-job-description",
+    title: "How to tailor your resume to a job description (with AI, in 30 seconds)",
+    description: "A step-by-step guide to tailoring a resume for a specific job, by hand or with AI, without inventing anything. Includes a 30-second video.",
+    date: "2026-11-18",
+    minutes: 5,
+    keywords: ["tailor resume", "tailor a resume", "tailor resume to job description", "how to tailor resume to job description", "tailor resume to job description ai", "how to tailor your resume"],
+    body: [
+      { type: "p", text: "To tailor a resume means rewriting it for one specific job: putting the experience that employer asks for at the top, using the words from their job description, and cutting what does not help. It is the single most useful thing you can do to a resume before you send it, and also the most tedious." },
+      { type: "p", text: "This guide shows how to tailor your resume to a job description by hand, and then how to do the same thing with AI in about 30 seconds." },
+      { type: "video" },
+      { type: "h2", text: "How to tailor your resume by hand" },
+      { type: "ol", items: [
+        "Read the job description twice. Highlight the skills, tools and responsibilities that appear more than once, or near the top. Those are what the employer cares about most.",
+        "Match each highlight to something true in your experience. If you have done it, note where. If you have not, leave it out.",
+        "Reorder. Move the most relevant role, project or bullet point higher, so a recruiter skimming the page sees it first.",
+        "Reword, honestly. If the job says \"REST APIs\" and your resume says \"web services\", use their words for the same work.",
+        "Rewrite the summary for this role in two or three lines, and put the most relevant skills first.",
+        "Cut. Remove bullets that do not support this application until it fits on one page.",
+      ] },
+      { type: "p", text: "Done well, this takes 20 to 40 minutes per application. That is fine for a dream job, and painful for the twentieth application of the week." },
+      { type: "h2", text: "How to tailor your resume to a job description with AI" },
+      { type: "p", text: "You can paste your resume and a job description into a chat AI and ask it to tailor one to the other. It works, but you have to copy everything in by hand, fix the formatting afterwards, and check carefully that it has not invented skills, numbers or job titles. Chat models are good at sounding right, and that is the problem." },
+      { type: "p", text: "Applier is built for exactly this job instead:" },
+      { type: "ol", items: [
+        "Sign in with Google and upload your resume once. It becomes the only source of facts.",
+        "Open any job post. Applier detects that it is a job and pulls out the role, company and description automatically.",
+        "Click Generate. In seconds you get a one-page resume tailored to that job description.",
+        "Edit it with AI (\"make the summary shorter\") or click into the document and type, like in Word. Edits are free and unlimited.",
+        "Download it as PDF, DOCX, Markdown or plain text.",
+      ] },
+      { type: "p", text: "Applier also remembers the edits you make, so each resume after that starts closer to how you like it." },
+      { type: "h2", text: "What a tailored resume should never do" },
+      { type: "ul", items: [
+        "Invent experience. If a requirement is not in your history, it should not appear on the page.",
+        "Add numbers you cannot back up in an interview.",
+        "Copy the job description word for word. Recruiters notice.",
+      ] },
+      { type: "p", text: "Applier is told never to do any of these. If something the employer asks for is missing from your resume, it is left out, not made up." },
+      { type: "h2", text: "Try it free" },
+      { type: "p", text: `You get ${pricing.freeCredits} tailored resumes free, with no card needed. After that it is ${money(pricing.perApplication)} per application, with no subscription.` },
+    ],
+  },
+  {
+    slug: "should-you-tailor-your-resume-for-each-job",
+    title: "Should you tailor your resume for each job?",
+    description: "Yes, for almost every application. Why it matters, how much to change for a specific job, and how to do it without spending an evening per application.",
+    date: "2026-11-18",
+    minutes: 4,
+    keywords: ["should i tailor my resume for each job", "should you tailor your resume to the job", "how to tailor a resume to a specific job", "tailor my resume"],
+    body: [
+      { type: "p", text: "Short answer: yes. If a job is worth applying to, it is worth sending a resume that was written for it. The longer answer is about how much to change, and how to make it fast enough that you actually do it." },
+      { type: "h2", text: "Why tailoring works" },
+      { type: "ul", items: [
+        "Recruiters skim. They look for the few things the job needs, near the top of the page. A tailored resume puts those things there.",
+        "Many employers use applicant tracking systems that search resumes for the skills in the job description. Using the employer's own words for skills you really have helps you get found.",
+        "It makes your case for you. A generic resume asks the reader to work out why you fit. A tailored one tells them.",
+      ] },
+      { type: "h2", text: "How much should you change for a specific job?" },
+      { type: "p", text: "Less than you might think. You are not writing a new resume, you are re-aiming the one you have:" },
+      { type: "ul", items: [
+        "The summary: rewrite it for the role every time.",
+        "Skills: reorder so the ones in the job description come first.",
+        "Experience: keep your roles and dates, but move the most relevant bullet points up and trim the rest.",
+        "Wording: use the job's vocabulary where it describes the same work you did.",
+      ] },
+      { type: "p", text: "What you should never change are the facts: employers, titles, dates, degrees and results." },
+      { type: "h2", text: "When a generic resume is fine" },
+      { type: "p", text: "Career fairs, networking, or a recruiter who asked for \"your resume\" without a specific role in mind. Everywhere else, tailor it." },
+      { type: "h2", text: "Making it fast" },
+      { type: "p", text: "The real reason people skip tailoring is time. Applier removes that: open the job post, click Generate, and you get a one-page resume tailored to that job in seconds, built only from the facts in your own resume. You can then edit it with AI or by hand, for free." },
+      { type: "video" },
+      { type: "p", text: `It costs ${money(pricing.perApplication)} per application after ${pricing.freeCredits} free ones, so tailoring every resume costs less than a coffee a week.` },
+    ],
+  },
+  {
+    slug: "ai-resume-tailor-no-subscription",
+    title: "An AI resume tailor with no subscription",
+    description: `Most AI resume tools charge monthly and cap how much you can use them. Applier is pay per application: ${money(pricing.perApplication)} per tailored resume, with ${pricing.freeCredits} free to start.`,
+    date: "2026-11-18",
+    minutes: 3,
+    keywords: ["ai resume tailor", "resume tailoring ai", "resume tailor ai", "resume builder no subscription", "free ai resume builder no subscription", "jobscan alternative"],
+    body: [
+      { type: "p", text: "Job hunting comes in bursts. You might send thirty applications in two weeks, then none for a month. Monthly subscriptions do not fit that: you pay for the quiet months, and in the busy ones you hit a usage limit." },
+      { type: "h2", text: "Pay per application instead" },
+      { type: "p", text: `Applier has no subscription. You get ${pricing.freeCredits} tailored resumes free, then pay ${money(pricing.perApplication)} for each one you generate, with a ${money(pricing.minimumCharge)} minimum purchase. There is nothing to cancel.` },
+      { type: "ul", items: [
+        "One credit = one tailored resume for one job.",
+        "Editing it, by asking the AI or by hand, is free and unlimited.",
+        "Undo and downloads (PDF, DOCX, Markdown, text) are free.",
+        "If generation fails, you are not charged.",
+      ] },
+      { type: "h2", text: "How that compares" },
+      { type: "p", text: "Other AI resume tailoring tools usually work out at $0.30 to $1.00 per application once you divide the subscription by what you really use, and many cap how many resumes you can tailor each month. At $0.10 per application, Applier is the lowest cost per application we know of." },
+      { type: "h2", text: "What you get for ten cents" },
+      { type: "ul", items: [
+        "Automatic job detection on any job site: role, company and description are read for you.",
+        "A one-page resume tailored to that job description, in seconds.",
+        "Only facts from your own resume. Nothing invented.",
+        "An editor that works like Word, plus plain-language AI edits.",
+        "It remembers your edits, so your next resume starts closer to your style.",
+      ] },
+      { type: "video" },
+      { type: "p", text: "Add it to Chrome, tailor your first resumes free, and only pay again when you are actually applying." },
+    ],
+  },
   {
     slug: "how-applier-tailors-your-resume",
     title: "How Applier tailors your resume without making things up",
@@ -41,8 +153,9 @@ export const getPosts = (pricing: Pricing): Post[] => [
   },
   {
     slug: "why-one-page-resumes",
-    title: "Why Applier keeps every resume to one page",
-    description: "How the one-page fit works: smaller type first, then trimming the least important content, and telling you what changed.",
+    title: "How to make your resume one page (and why Applier always does)",
+    description: "How to fit a one page resume without losing what matters: smaller type first, then trimming the least important content, and being told what changed.",
+    keywords: ["one page resume", "how to make resume one page"],
     date: "2026-11-14",
     minutes: 3,
     body: [

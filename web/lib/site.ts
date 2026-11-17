@@ -12,7 +12,17 @@ export const site = {
   updated: "November 14, 2026",
 };
 
-export const money = (n: number) => `$${n.toFixed(2)}`;
+/** The 30-second product demo on YouTube. */
+export const demoVideo = {
+  id: "KGzbmHw3e4k",
+  title: "Applier - Tailor your resume instantly - Pay per app / no subscription",
+  description:
+    "See how Applier works in 30 seconds: sign in, add your resume once, open any job post, generate a one-page tailored resume, and edit it with AI or by hand. No subscription, pay per application.",
+  uploadDate: "2026-11-18",
+  duration: "PT30S",
+};
+
+export const money =(n: number) => `$${n.toFixed(2)}`;
 
 export const nav = [
   { href: "/#how-it-works", label: "How it works" },

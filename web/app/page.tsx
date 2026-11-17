@@ -5,6 +5,7 @@ import { FaqList } from "@/components/FaqList";
 import { HeroDemo } from "@/components/HeroDemo";
 import { Reveal } from "@/components/Reveal";
 import { Eyebrow, Section } from "@/components/Section";
+import { YouTube } from "@/components/YouTube";
 import { getFaq } from "@/lib/faq";
 import { formatDate, getPosts } from "@/lib/posts";
 import { getPricing } from "@/lib/pricing";
@@ -61,7 +62,7 @@ const Bar = ({ w }: { w: string }) => <div className="h-1.5 rounded-full bg-neut
 export default async function Home() {
   const pricing = await getPricing();
   const faq = getFaq(pricing);
-  const posts = getPosts(pricing);
+  const posts = [...getPosts(pricing)].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3);
   const credits = pricing.minimumCredits;
 
   return (
@@ -102,6 +103,24 @@ export default async function Home() {
               <div className="mt-1 text-sm text-neutral-500">{text}</div>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* 30-second demo video */}
+      <section id="video" className="border-b border-neutral-200">
+        <div className="mx-auto max-w-5xl px-6 py-24 md:py-28">
+          <Reveal className="mx-auto max-w-2xl text-center">
+            <Eyebrow>Watch / 30 seconds</Eyebrow>
+            <h2 className="mt-4 text-4xl font-semibold leading-[1.08] md:text-5xl" style={{ letterSpacing: "-0.04em" }}>
+              Tailor your resume to any job description.
+            </h2>
+            <p className="mt-5 text-lg leading-relaxed text-neutral-600">
+              Sign in, add your resume once, open a job post and generate. Then edit it with AI or by hand, like in Word.
+            </p>
+          </Reveal>
+          <Reveal delay={100} className="mt-12">
+            <YouTube />
+          </Reveal>
         </div>
       </section>
 

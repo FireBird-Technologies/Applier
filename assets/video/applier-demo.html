@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Applier — 30s demo (preview)</title>
+<style>
+@font-face{font-family:Geist;src:url(../../web/node_modules/geist/dist/fonts/geist-sans/Geist-Regular.woff2) format("woff2");font-weight:400}
+@font-face{font-family:Geist;src:url(../../web/node_modules/geist/dist/fonts/geist-sans/Geist-Medium.woff2) format("woff2");font-weight:500}
+@font-face{font-family:Geist;src:url(../../web/node_modules/geist/dist/fonts/geist-sans/Geist-SemiBold.woff2) format("woff2");font-weight:600}
+@font-face{font-family:Geist;src:url(../../web/node_modules/geist/dist/fonts/geist-sans/Geist-Bold.woff2) format("woff2");font-weight:700}
+@font-face{font-family:Geist;src:url(../../web/node_modules/geist/dist/fonts/geist-sans/Geist-Black.woff2) format("woff2");font-weight:900}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#111;font-family:Geist,system-ui,sans-serif;color:#000;overflow:hidden}
+#stage{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0;overflow:hidden;
+  background:radial-gradient(ellipse at 50% 40%,#fff 0%,#f6f6f6 55%,#ececec 100%)}
+.abs{position:absolute}
+.metal{background:linear-gradient(180deg,#e6e6e6 0%,#9a9a9a 38%,#4d4d4d 52%,#8c8c8c 70%,#d0d0d0 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 2px 1px rgba(0,0,0,.18))}
+.mark{fill:none;stroke:#000;stroke-linecap:round;stroke-linejoin:round}
+
+/* captions */
+#caption{left:0;width:1920px;top:46px;text-align:center}
+#cap-step{display:inline-block;font:600 20px Geist;letter-spacing:.14em;text-transform:uppercase;color:#737373;
+  border:1.5px solid #d4d4d4;border-radius:999px;padding:6px 16px;background:#fff}
+#cap-title{font:800 72px/1.05 Geist;letter-spacing:-.03em;margin-top:14px;font-weight:700}
+#cap-sub{font:400 26px Geist;color:#6b6b6b;margin-top:10px}
+
+/* world (camera) */
+#world{left:0;top:0;width:1920px;height:1080px;transform-origin:0 0}
+#win{left:160px;top:190px;width:1600px;height:860px;background:#fff;border-radius:18px;overflow:hidden;
+  box-shadow:0 40px 90px rgba(0,0,0,.18),0 0 0 1px rgba(0,0,0,.08)}
+#tabs{height:42px;background:#efefef;display:flex;align-items:flex-end;padding:0 14px;gap:8px}
+.dots{display:flex;gap:8px;align-self:center;margin-right:14px}.dots i{width:12px;height:12px;border-radius:50%;background:#d0d0d0;display:block}
+.tab{height:34px;background:#fff;border-radius:10px 10px 0 0;padding:0 18px;display:flex;align-items:center;gap:10px;font:500 14px Geist;color:#333;min-width:260px}
+.tab b{width:14px;height:14px;border-radius:4px;background:#2b2b2b;display:block}
+#addr{height:42px;border-bottom:1px solid #e5e5e5;display:flex;align-items:center;padding:0 16px;gap:12px}
+#addr .url{flex:1;height:30px;border-radius:15px;background:#f2f2f2;font:400 14px Geist;color:#555;display:flex;align-items:center;padding:0 16px}
+#content{position:absolute;left:0;top:84px;right:0;bottom:0}
+
+/* job page */
+#page{left:0;top:0;width:1140px;bottom:0;overflow:hidden}
+.nw-nav{height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 56px;border-bottom:1px solid #eee}
+.nw-logo{font:700 22px Geist}
+.nw-links{display:flex;gap:30px;font:400 15px Geist;color:#555;align-items:center}
+.nw-btn{background:#2563eb;color:#fff;border-radius:8px;padding:9px 16px;font-weight:500}
+.job{padding:34px 56px}
+.job .crumb{font:400 14px Geist;color:#888}
+.job h1{font:700 40px Geist;letter-spacing:-.02em;margin:10px 0 8px}
+.job .meta{font:400 16px Geist;color:#666}
+.job .apply{display:inline-block;margin:20px 0 26px;background:#2563eb;color:#fff;border-radius:10px;padding:13px 22px;font:500 16px Geist}
+.job h3{font:600 21px Geist;margin:18px 0 8px}
+.job p,.job li{font:400 16px/1.6 Geist;color:#333}
+.job ul{padding-left:22px}
+#blank{left:0;top:0;width:1140px;bottom:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:22px;background:#fafafa}
+#blank .search{width:560px;height:52px;border-radius:26px;background:#fff;border:1px solid #e3e3e3}
+#blank .tiles{display:flex;gap:18px}#blank .tiles i{width:84px;height:84px;border-radius:18px;background:#efefef;display:block}
+#scanline{left:0;width:1140px;height:120px;background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.06) 80%,rgba(0,0,0,.5) 100%);pointer-events:none}
+
+/* side panel */
+#panel{right:0;top:0;width:460px;bottom:0;border-left:1px solid #e5e5e5;background:#fff}
+.ph{height:112px;border-bottom:1px solid #e8e8e8;padding:20px 26px 0}
+.ph-row{display:flex;align-items:center;gap:12px}
+.ph-row .name{font:600 24px Geist;letter-spacing:-.01em}
+.credits{margin-left:auto;display:flex;align-items:center;gap:12px;font:400 16px Geist}
+.credits span{border:1.5px solid #ddd;border-radius:999px;padding:4px 12px;font-weight:500}
+.ph-nav{display:flex;gap:22px;margin-top:14px;font:400 16px Geist;color:#666}
+.pb{left:0;right:0;top:112px;bottom:0}
+.view{position:absolute;inset:0;padding:24px 26px}
+.lbl{font:500 13px Geist;letter-spacing:.08em;color:#777;text-transform:uppercase}
+.btn-dark{background:#000;color:#fff;border-radius:12px;font:600 18px Geist;display:flex;align-items:center;justify-content:center}
+.field{border:1.5px solid #e2e2e2;border-radius:10px;padding:11px 14px;font:400 16px Geist;min-height:46px;margin:6px 0 14px}
+.card{border:1.5px solid #e2e2e2;border-radius:14px;padding:16px 18px}
+.drop{border:2px dashed #cfcfcf;border-radius:14px;height:150px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+.caret{display:inline-block;width:2px;height:1.05em;background:#000;vertical-align:-2px;margin-left:1px}
+
+/* editor */
+#editor{left:0;top:0;right:0;bottom:0;background:#fff}
+.ed-top{height:60px;border-bottom:1px solid #eee;display:flex;align-items:center;padding:0 28px;gap:16px;font:400 16px Geist}
+.pill{border:1.5px solid #ddd;border-radius:999px;padding:3px 12px;font:500 13px Geist}
+.ed-ai{position:absolute;left:28px;right:28px;top:78px;height:56px;display:flex;gap:12px}
+.ed-ai .in{flex:1;border:1.5px solid #ddd;border-radius:12px;display:flex;align-items:center;padding:0 18px;font:400 18px Geist}
+.ed-ai .ap{width:120px;border-radius:12px;background:#9a9a9a;color:#fff;font:600 18px Geist;display:flex;align-items:center;justify-content:center}
+#sheet{left:340px;width:920px;top:160px;bottom:-40px;background:#fff;border-radius:6px;box-shadow:0 0 0 1px #ececec,0 10px 30px rgba(0,0,0,.06);padding:44px 70px}
+#sheet h2{font:700 38px Geist;letter-spacing:-.02em}
+#sheet .sub{font:400 18px Geist;color:#444;margin-top:4px}
+#sheet .contact{font:400 15px Geist;color:#777;margin-top:4px}
+#sheet .sec{font:600 14px Geist;letter-spacing:.1em;color:#111;border-bottom:1.5px solid #222;padding-bottom:4px;margin:24px 0 10px}
+#sheet p,#sheet li{font:400 17px/1.55 Geist;color:#222}
+#sheet ul{padding-left:22px}
+.hl{background:#fff2a8;border-radius:3px;box-shadow:0 0 0 2px #fff2a8}
+
+/* overlays */
+#memo{left:0;top:0;width:1920px;height:1080px;display:flex;align-items:center;justify-content:center}
+.memo-card{background:#fff;border-radius:24px;box-shadow:0 30px 80px rgba(0,0,0,.18),0 0 0 1px rgba(0,0,0,.06);padding:42px 52px;width:760px;margin-top:150px}
+.memo-card .row{display:flex;align-items:center;gap:14px;font:600 24px Geist}
+.chips{display:flex;flex-wrap:wrap;gap:12px;margin-top:24px}
+.chip{border:1.5px solid #d8d8d8;border-radius:999px;padding:10px 18px;font:500 18px Geist;display:flex;gap:10px;align-items:center;background:#fafafa}
+
+#price{left:0;top:0;width:1920px;height:1080px}
+#cta{left:0;top:0;width:1920px;height:1080px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.bar-row{display:grid;grid-template-columns:220px 1fr;align-items:center;gap:30px;margin:26px 0}
+.bar-name{font:600 30px Geist;text-align:right}
+.bar{height:84px;border-radius:16px;display:flex;align-items:center;padding:0 26px;font:700 34px Geist;white-space:nowrap}
+#intro{left:0;top:0;width:1920px;height:1080px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+
+/* cursor */
+#cursor{left:0;top:0;width:34px;height:34px;pointer-events:none}
+#ring{left:0;top:0;width:60px;height:60px;border-radius:50%;border:3px solid rgba(0,0,0,.55)}
+
+/* preview controls */
+#ctrl{position:fixed;left:0;right:0;bottom:0;height:56px;background:#1b1b1b;display:flex;align-items:center;gap:14px;padding:0 18px;color:#ddd;font:500 14px Geist}
+#ctrl button{background:#333;color:#fff;border:0;border-radius:8px;padding:8px 14px;font:600 14px Geist;cursor:pointer}
+#ctrl input{flex:1}
+body.render #ctrl{display:none}
+</style>
+</head>
+<body>
+<div id="stage">
+
+  <!-- INTRO -->
+  <div id="intro" class="abs">
+    <svg id="intro-mark" width="150" height="150" viewBox="0 0 24 24"><g class="mark" stroke-width="1.6">
+      <path id="im1" d="M6 3h8l4 4v14H6z"/><path id="im2" d="M14 3v4h4"/><path id="im3" d="M9 14.2l2.2 2.2L15.2 12"/></g></svg>
+    <div id="intro-word" style="font:700 64px Geist;letter-spacing:-.03em;margin-top:6px">applier</div>
+    <div id="intro-line" class="metal" style="font:800 104px/1.05 Geist;font-weight:700;letter-spacing:-.04em;margin-top:34px;text-align:center">A resume for every job.<br>In seconds.</div>
+  </div>
+
+  <!-- WORLD: browser -->
+  <div id="world" class="abs">
+    <div id="win" class="abs">
+      <div id="tabs"><div class="dots"><i></i><i></i><i></i></div><div class="tab"><b></b><span id="tab-title">New Tab</span></div></div>
+      <div id="addr"><span style="color:#999">&#8592; &#8594; &#8635;</span><div class="url" id="url">Search or type a URL</div></div>
+      <div id="content">
+        <div id="blank" class="abs"><div class="tiles"><i></i><i></i><i></i><i></i><i></i></div><div class="search"></div></div>
+        <div id="page" class="abs">
+          <div class="nw-nav"><div class="nw-logo">Northwind</div><div class="nw-links"><span>Products</span><span>Company</span><span>Careers</span><span class="nw-btn">Sign in</span></div></div>
+          <div class="job">
+            <div class="crumb">Careers / Engineering / Payments</div>
+            <h1>Backend Engineer, Payments Platform</h1>
+            <div class="meta">Remote (US) · Full-time · Engineering</div>
+            <div class="apply">Apply for this job</div>
+            <h3>About the role</h3>
+            <p>We are hiring a Backend Engineer to build and scale the REST APIs behind our payments product. You will own performance, write Python every day, and lead a small team of engineers.</p>
+            <h3>What you will do</h3>
+            <ul><li>Design, build and maintain REST APIs that process millions of payments a month</li><li>Improve the performance and reliability of our core services</li><li>Lead a small team: plan the work, review code and mentor</li><li>Work with product and design to ship features quickly</li></ul>
+            <h3>What we are looking for</h3>
+            <ul><li>4+ years of backend experience, with strong Python</li><li>Experience with PostgreSQL, caching and event streaming (Kafka)</li></ul>
+          </div>
+          <div id="scanline" class="abs"></div>
+        </div>
+
+        <div id="panel" class="abs">
+          <div class="ph">
+            <div class="ph-row">
+              <svg width="34" height="34" viewBox="0 0 24 24"><g class="mark" stroke-width="1.8"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><path d="M9 14.2l2.2 2.2L15.2 12"/></g></svg>
+              <div class="name">applier</div>
+              <div class="credits" id="credits"><span id="cred">10/10</span>Buy credits</div>
+            </div>
+            <div class="ph-nav" id="ph-nav"><span>Resume</span><span>Scan</span><span>Sign out</span></div>
+          </div>
+          <div class="pb abs">
+            <!-- sign in -->
+            <div class="view" id="v-signin" style="text-align:center;padding-top:110px">
+              <svg width="76" height="76" viewBox="0 0 24 24"><g class="mark" stroke-width="1.6"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><path d="M9 14.2l2.2 2.2L15.2 12"/></g></svg>
+              <div style="font:700 28px Geist;margin-top:18px;letter-spacing:-.02em">Welcome to Applier</div>
+              <div style="font:400 17px Geist;color:#777;margin-top:8px">A tailored resume for every job you open.</div>
+              <div id="g-btn" class="abs" style="left:40px;right:40px;top:340px;height:56px;border:1.5px solid #d6d6d6;border-radius:12px;display:flex;align-items:center;justify-content:center;gap:12px;font:600 18px Geist;background:#fff">
+                <span style="width:26px;height:26px;border-radius:50%;border:2px solid #000;display:flex;align-items:center;justify-content:center;font:700 15px Geist">G</span>Continue with Google</div>
+            </div>
+            <!-- upload -->
+            <div class="view" id="v-upload">
+              <div style="font:700 24px Geist;letter-spacing:-.01em">Add your source resume</div>
+              <div style="font:400 16px/1.45 Geist;color:#666;margin-top:8px">The base document every tailored resume is built from. Only facts in it are used.</div>
+              <div class="drop" id="drop" style="margin-top:24px"><div style="font:600 18px Geist">Choose a file</div><div style="font:400 15px Geist;color:#777">PDF, DOCX, MD or TXT, up to 5 MB</div></div>
+              <div class="card abs" id="current" style="left:26px;right:26px;top:136px;height:150px;display:flex;flex-direction:column;justify-content:center;background:#fff">
+                <div class="lbl">Current</div>
+                <div style="font:600 20px Geist;margin-top:6px;display:flex;align-items:center;gap:10px">Jane Doe Resume.pdf
+                  <svg width="22" height="22" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#000"/><path d="M7 12.5l3.2 3.2L17 9" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                <div style="font:400 15px Geist;color:#777;margin-top:4px">3,859 characters · saved</div>
+              </div>
+            </div>
+            <!-- scan -->
+            <div class="view" id="v-scan">
+              <div class="lbl">Current post</div>
+              <div class="field" style="font-size:15px">Backend Engineer, Payments Platform<div style="color:#888;font-size:13px;margin-top:2px">careers.northwind.example</div></div>
+              <div id="detect" style="display:flex;align-items:center;gap:10px;font:500 17px Geist;margin-bottom:12px"><span style="width:10px;height:10px;border-radius:50%;background:#000;display:block"></span><span id="detect-t">Job detected (98%)</span></div>
+              <div class="lbl">Role</div><div class="field" id="f-role"></div>
+              <div class="lbl">Company</div><div class="field" id="f-co"></div>
+              <div class="lbl">Job description</div>
+              <div class="field" id="f-jd" style="height:150px;overflow:hidden;font:400 14px/1.5 Geist;color:#444"></div>
+              <div id="gen-btn" class="btn-dark abs" style="left:26px;right:26px;bottom:62px;height:56px">Generate tailored resume</div>
+              <div class="abs" style="left:0;right:0;bottom:30px;text-align:center;font:400 14px Geist;color:#888">Uses 1 credit. Edits and downloads are free.</div>
+            </div>
+            <!-- loading -->
+            <div class="view" id="v-load" style="text-align:center;padding-top:200px">
+              <svg width="64" height="64" viewBox="0 0 24 24"><g class="mark" stroke-width="1.6"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><path d="M9 14.2l2.2 2.2L15.2 12"/></g></svg>
+              <div style="margin:30px auto 0;width:320px;height:8px;border-radius:4px;background:#e8e8e8;overflow:hidden"><div id="lbar" style="height:8px;background:#000;border-radius:4px;width:0"></div></div>
+              <div id="lstat" style="font:500 20px Geist;margin-top:22px">Reading the job description</div>
+              <div style="font:400 15px Geist;color:#888;margin-top:10px">Tailoring for Backend Engineer, Payments…</div>
+            </div>
+            <!-- result -->
+            <div class="view" id="v-res">
+              <div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font:600 18px Geist">Backend Engineer, Payments Platform</div><div style="color:#777;font:400 15px Geist">Northwind</div></div><span class="pill">Draft</span></div>
+              <div class="lbl" style="margin-top:20px">Preview (1 page)</div>
+              <div class="card" style="margin-top:8px;height:380px;overflow:hidden;font:400 13px/1.5 Geist">
+                <div style="font:700 22px Geist">Jane Doe</div><div style="color:#555">Backend Engineer · Python, Payments APIs</div>
+                <div style="font:600 12px Geist;letter-spacing:.08em;border-bottom:1.5px solid #222;margin:12px 0 6px">SUMMARY</div>
+                <div>Backend engineer with 6 years building and scaling REST APIs in Python for payments products. Cut report times from minutes to seconds through caching and led a team of four.</div>
+                <div style="font:600 12px Geist;letter-spacing:.08em;border-bottom:1.5px solid #222;margin:12px 0 6px">SKILLS</div>
+                <div>Python, REST APIs, Caching, PostgreSQL, Performance tuning, Team leadership</div>
+                <div style="font:600 12px Geist;letter-spacing:.08em;border-bottom:1.5px solid #222;margin:12px 0 6px">EXPERIENCE</div>
+                <div><b>Senior Backend Engineer</b> — Ledgerly</div>
+              </div>
+              <div class="lbl" style="margin-top:18px">Download</div>
+              <div style="display:flex;gap:10px;margin-top:8px"><span class="pill" style="font-size:15px;padding:6px 16px">PDF</span><span class="pill" style="font-size:15px;padding:6px 16px">DOCX</span><span class="pill" style="font-size:15px;padding:6px 16px">MD</span><span class="pill" style="font-size:15px;padding:6px 16px">TXT</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- full-tab editor -->
+        <div id="editor" class="abs">
+          <div class="ed-top">
+            <svg width="26" height="26" viewBox="0 0 24 24"><g class="mark" stroke-width="1.8"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><path d="M9 14.2l2.2 2.2L15.2 12"/></g></svg>
+            <b style="font-weight:600">applier</b><span>Backend Engineer at Northwind</span><span class="pill">Draft</span>
+            <span style="margin-left:auto;color:#888">Undo</span><b style="font-weight:600">Save</b><span style="color:#888">Close</span>
+          </div>
+          <div class="ed-ai"><div class="in" id="ai-in"></div><div class="ap" id="ai-ap">Apply</div></div>
+          <div id="sheet" class="abs">
+            <h2>Jane Doe</h2>
+            <div class="sub">Backend Engineer</div>
+            <div class="contact">jane@example.com · Remote, US · linkedin.com/in/janedoe</div>
+            <div class="sec">SUMMARY</div>
+            <p id="summary"></p>
+            <div class="sec">SKILLS</div>
+            <p id="skills"></p>
+            <div class="sec">EXPERIENCE</div>
+            <p><b>Senior Backend Engineer — Ledgerly</b> <span style="color:#777">· 2021 – Present</span></p>
+            <ul><li>Built and maintained REST APIs in Python for a payments platform handling 2M transactions a month.</li><li>Cut report generation time from 6 minutes to 40 seconds by adding caching.</li></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- dragged file -->
+    <div id="file" class="abs" style="white-space:nowrap;width:290px;height:76px;background:#fff;border-radius:14px;box-shadow:0 18px 40px rgba(0,0,0,.2),0 0 0 1px rgba(0,0,0,.06);display:flex;align-items:center;gap:14px;padding:0 18px">
+      <div style="width:40px;height:48px;border-radius:6px;background:#000;color:#fff;font:700 12px Geist;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px">PDF</div>
+      <div><div style="font:600 17px Geist">Jane Doe Resume.pdf</div><div style="font:400 13px Geist;color:#888">148 KB</div></div>
+    </div>
+
+    <div id="ring" class="abs"></div>
+    <svg id="cursor" class="abs" viewBox="0 0 24 24"><path d="M4 2.5l15 8.6-6.6 1.5 3.8 7.3-3 1.6-3.8-7.4L4.6 18.7z" fill="#000" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/></svg>
+  </div>
+
+  <div id="capbg" class="abs" style="left:0;top:0;width:1920px;height:300px;background:linear-gradient(180deg,#f7f7f7 0%,#f7f7f7 62%,rgba(247,247,247,0) 100%)"></div>
+  <!-- CAPTION -->
+  <div id="caption" class="abs"><div id="cap-step"></div><div id="cap-title" class="metal"></div><div id="cap-sub"></div></div>
+
+  <!-- MEMORY -->
+  <div id="memo" class="abs"><div class="memo-card" id="memo-card">
+    <div class="row"><svg width="30" height="30" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#000"/><path d="M7 12.5l3.2 3.2L17 9" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>Saved to your profile</div>
+    <div style="font:400 19px Geist;color:#666;margin-top:8px">Your next resume starts from these. No need to repeat yourself.</div>
+    <div class="chips" id="chips">
+      <div class="chip">Shorter summary</div><div class="chip">Kafka in skills</div><div class="chip">Keep it to one page</div><div class="chip">Your wording</div>
+    </div>
+  </div></div>
+
+  <!-- PRICING -->
+  <div id="price" class="abs">
+    <div id="pr-h" class="metal abs" style="left:0;width:1920px;top:150px;text-align:center;font:700 120px/1 Geist;letter-spacing:-.045em">No subscription.</div>
+    <div id="pr-s" class="abs" style="left:0;width:1920px;top:300px;text-align:center;font:500 36px Geist;color:#555">Pay only for the jobs you apply to.</div>
+    <div class="abs" style="left:250px;width:1420px;top:420px">
+      <div class="bar-row" id="row-a"><div class="bar-name">Applier</div><div><div class="bar" id="bar-a" style="background:#000;color:#fff">$0.10 <span style="font-weight:400;font-size:24px;margin-left:12px;opacity:.75">per application</span></div></div></div>
+      <div class="bar-row" id="row-b"><div class="bar-name" style="color:#888">Others</div><div><div class="bar" id="bar-b" style="background:#dcdcdc;color:#555">$0.30 – $1.00 <span style="font-weight:400;font-size:24px;margin-left:12px">per app + monthly plan + limits</span></div></div></div>
+    </div>
+    <div id="pr-badge" class="abs" style="left:0;width:1920px;top:740px;text-align:center">
+      <span style="display:inline-block;background:#fff;border:2px solid #000;border-radius:999px;padding:16px 34px;font:700 34px Geist;letter-spacing:-.01em">Lowest cost per application</span>
+    </div>
+    <div id="pr-foot" class="abs" style="left:0;width:1920px;top:850px;text-align:center;font:400 26px Geist;color:#777">No card to start · Edits and downloads are always free</div>
+  </div>
+
+  <!-- CTA -->
+  <div id="cta" class="abs">
+    <svg width="120" height="120" viewBox="0 0 24 24"><g class="mark" stroke-width="1.6"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><path d="M9 14.2l2.2 2.2L15.2 12"/></g></svg>
+    <div class="metal" style="font:700 150px/1 Geist;letter-spacing:-.05em;margin-top:8px;padding-bottom:10px">applier</div>
+    <div style="font:500 34px Geist;color:#555;margin-top:14px">10 free resumes. No card needed.</div>
+    <div style="margin-top:40px;background:#000;color:#fff;border-radius:999px;padding:20px 44px;font:600 34px Geist">Add to Chrome · applier.site</div>
+  </div>
+</div>
+
+<div id="ctrl"><button id="play">Pause</button><button id="restart">Restart</button><span id="tlabel">0.0s</span><input id="scrub" type="range" min="0" max="30" step="0.01" value="0"></div>
+
+<script>
+const D = 30;
+const $ = id => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const seg = (t, a, b) => clamp((t - a) / (b - a));
+const ease = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const out = x => 1 - Math.pow(1 - x, 3);
+const back = x => { const c = 1.6; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+const lerp = (a, b, p) => a + (b - a) * p;
+// visibility window with fades
+const win = (t, a, b, f = .35) => Math.min(seg(t, a, a + f), 1 - seg(t, b - f, b));
+const type = (s, p) => s.slice(0, Math.round(s.length * clamp(p)));
+const show = (el, o, extra = '') => { el.style.opacity = o; el.style.visibility = o <= 0.001 ? 'hidden' : 'visible'; if (extra !== null) el.style.transform = extra; };
+const kf = (t, keys) => { // keys: [[t, v...]], eased between
+  if (t <= keys[0][0]) return keys[0].slice(1);
+  for (let i = 0; i < keys.length - 1; i++) {
+    const [a, ...va] = keys[i], [b, ...vb] = keys[i + 1];
+    if (t <= b) { const p = ease(seg(t, a, b)); return va.map((v, j) => lerp(v, vb[j], p)); }
+  }
+  return keys[keys.length - 1].slice(1);
+};
+
+const STEPS = [
+  [2.6, 6.0, 'Step 1', 'Sign in', 'One click with Google.'],
+  [6.0, 9.6, 'Step 2', 'Add your resume', 'Upload once. It is your only source of facts.'],
+  [9.6, 14.0, 'Step 3', 'Open any job post', 'Role, company and description are detected automatically.'],
+  [14.0, 17.6, 'Step 4', 'Generate', 'A one-page resume tailored to the role, in seconds.'],
+  [17.6, 22.6, 'Step 5', 'Edit with AI, or like Word', 'Ask for a change in plain words, or just click and type.'],
+  [22.6, 24.7, 'Step 6', 'It remembers you', 'Your edits shape every resume that follows.'],
+];
+const SUM_LONG = 'Backend engineer with 6 years building and scaling REST APIs in Python for payments products. Cut report times from minutes to seconds through caching and led a team of four. Passionate about clean code, mentoring, and shipping reliable systems at scale.';
+const SUM_SHORT = 'Backend engineer with 6 years scaling Python payment APIs. Cut report times from minutes to seconds and led a team of four.';
+const SKILLS = 'Python, REST APIs, Caching, PostgreSQL, Performance tuning';
+const JD = 'About the role\nWe are hiring a Backend Engineer to build and scale the REST APIs behind our payments product. You will own performance, write Python every day, and lead a small team of engineers.\nWhat you will do\nDesign, build and maintain REST APIs…';
+
+// cursor path in world coords
+const CURSOR = [
+  [2.6, 1900, 1100], [3.6, 1560, 860], [4.1, 1532, 736], [4.6, 1532, 736], [5.4, 1700, 900],
+  [12.6, 1700, 1000], [14.2, 1540, 976], [14.9, 1540, 976], [15.8, 1750, 1060],
+  [17.8, 1500, 900], [18.9, 1668, 382], [19.5, 1668, 382], [20.2, 1089, 752], [20.6, 1089, 752], [22.6, 1180, 820],
+];
+const CLICKS = [4.2, 14.55, 19.05, 20.4];
+
+function render(t) {
+  // INTRO 0–2.6
+  const io = 1 - seg(t, 2.25, 2.6);
+  show($('intro'), io, `scale(${lerp(1, 1.06, seg(t, 2.2, 2.6))})`);
+  const draw = out(seg(t, 0.1, 0.9));
+  ['im1', 'im2', 'im3'].forEach((id, i) => { const p = $(id); p.style.strokeDasharray = 60; p.style.strokeDashoffset = 60 * (1 - out(seg(t, 0.1 + i * .2, 0.8 + i * .2))); });
+  show($('intro-word'), seg(t, .55, .95), `translateY(${(1 - out(seg(t, .55, .95))) * 20}px)`);
+  show($('intro-line'), seg(t, 1.0, 1.5), `translateY(${(1 - out(seg(t, 1.0, 1.6))) * 40}px)`);
+
+  // WORLD visible 2.6–24.7
+  const wo = Math.min(seg(t, 2.5, 2.95), 1 - seg(t, 24.4, 24.8));
+  // camera: [t, scale, focusX, focusY] -> focus maps to (cx, cy)
+  const [s, fx, fy, cx, cy] = kf(t, [
+    [2.6, 1.32, 1530, 560, 1180, 640], [9.3, 1.32, 1530, 560, 1180, 640],
+    [10.0, 0.98, 960, 620, 960, 640], [13.6, 0.98, 960, 620, 960, 640],
+    [14.2, 1.0, 1530, 620, 1250, 660], [17.2, 1.0, 1530, 620, 1250, 660],
+    [17.9, 1.0, 960, 620, 960, 640], [19.6, 1.0, 960, 620, 960, 640],
+    [20.2, 1.28, 960, 640, 960, 660], [22.5, 1.28, 960, 640, 960, 660], [23.2, 1.0, 960, 620, 960, 640],
+  ]);
+  const blur = seg(t, 22.6, 23.0) * 6;
+  $('world').style.transform = `translate(${cx - fx * s}px, ${cy - fy * s + (1 - out(seg(t, 2.5, 3.1))) * 80}px) scale(${s})`;
+  $('world').style.filter = blur > 0.05 ? `blur(${blur}px)` : 'none';
+  show($('world'), wo, null);
+
+  // browser page state
+  const onJob = t >= 9.6;
+  show($('blank'), onJob ? 0 : 1, '');
+  show($('page'), onJob ? seg(t, 9.6, 9.9) : 0, '');
+  $('url').textContent = onJob ? 'careers.northwind.example/jobs/backend-engineer' : 'Search or type a URL';
+  const inEditor = t >= 17.6;
+  $('tab-title').textContent = inEditor ? 'Applier · Resume editor' : onJob ? 'Backend Engineer, Payments — Northwind' : 'New Tab';
+  if (inEditor) $('url').textContent = 'applier · editor';
+  show($('editor'), seg(t, 17.6, 17.95), '');
+  $('scanline').style.top = (lerp(-120, 780, seg(t, 10.0, 11.4))) + 'px';
+  $('scanline').style.opacity = win(t, 10.0, 11.5, .15);
+  $('page').style.filter = t > 13.6 && t < 17.6 ? 'grayscale(1)' : 'none';
+  $('page').style.opacity = onJob ? (t > 13.6 ? lerp(1, .45, seg(t, 13.6, 14.1)) : seg(t, 9.6, 9.9)) : 0;
+  $('blank').style.opacity = onJob ? 0 : .5;
+
+  // panel views
+  const signed = t >= 4.5;
+  $('credits').style.opacity = signed ? seg(t, 4.5, 4.8) : 0;
+  $('ph-nav').style.opacity = signed ? seg(t, 4.5, 4.8) : 0;
+  $('cred').textContent = t >= 16.6 ? '9/10' : '10/10';
+  $('cred').style.background = t >= 16.6 && t < 17.4 ? '#000' : 'transparent';
+  $('cred').style.color = t >= 16.6 && t < 17.4 ? '#fff' : '#000';
+  show($('v-signin'), 1 - seg(t, 4.4, 4.7), '');
+  show($('v-upload'), Math.min(seg(t, 4.6, 4.9), 1 - seg(t, 9.5, 9.7)), '');
+  show($('v-scan'), Math.min(seg(t, 9.7, 10.0), 1 - seg(t, 14.8, 15.0)), '');
+  show($('v-load'), Math.min(seg(t, 14.9, 15.1), 1 - seg(t, 16.5, 16.7)), '');
+  show($('v-res'), seg(t, 16.6, 16.9), `translateY(${(1 - out(seg(t, 16.6, 17.0))) * 20}px)`);
+  // google button press
+  const press = 1 - .05 * win(t, 4.15, 4.4, .12);
+  $('g-btn').style.transform = `scale(${press})`;
+  $('g-btn').style.background = t > 4.15 ? '#f2f2f2' : '#fff';
+
+  // file drag
+  const fp = ease(seg(t, 6.6, 7.7));
+  const [fxp, fyp] = [lerp(700, 1405, fp), lerp(560, 470, fp)];
+  show($('file'), Math.min(seg(t, 6.3, 6.6), 1 - seg(t, 7.7, 7.9)), `translate(${fxp}px, ${fyp}px) rotate(${lerp(-8, 0, fp)}deg) scale(${lerp(1, .9, seg(t, 7.5, 7.9))})`);
+  $('drop').style.borderColor = t > 7.2 && t < 8.0 ? '#000' : '#cfcfcf';
+  $('drop').style.background = t > 7.2 && t < 8.0 ? '#f4f4f4' : 'transparent';
+  show($('current'), seg(t, 7.9, 8.2), `scale(${lerp(.94, 1, out(seg(t, 7.9, 8.3)))})`);
+  $('current').style.top = '136px';
+  $('drop').style.transform = `translateY(${out(seg(t, 7.9, 8.3)) * 190}px)`;
+
+  // scan fields
+  $('detect').style.opacity = seg(t, 11.3, 11.5);
+  $('detect-t').textContent = t < 11.8 ? 'Detecting job…' : 'Job detected (98%)';
+  $('f-role').textContent = type('Backend Engineer, Payments Platform', seg(t, 11.6, 12.5));
+  $('f-co').textContent = type('Northwind', seg(t, 12.5, 12.8));
+  $('f-jd').textContent = type(JD, seg(t, 12.8, 13.6));
+  $('f-jd').style.whiteSpace = 'pre-line';
+  ['f-role', 'f-co', 'f-jd'].forEach((id, i) => { const a = [11.6, 12.5, 12.8][i], b = [12.5, 12.8, 13.6][i]; $(id).style.borderColor = t > a && t < b + .3 ? '#000' : '#e2e2e2'; });
+  $('gen-btn').style.transform = `scale(${1 - .05 * win(t, 14.5, 14.75, .12)})`;
+  // loading
+  const lp = seg(t, 15.0, 16.5);
+  $('lbar').style.width = (out(lp) * 100) + '%';
+  $('lstat').textContent = ['Reading the job description', 'Matching your experience', 'Writing your resume', 'Fitting to one page'][Math.min(3, Math.floor(lp * 4))];
+
+  // editor
+  const aiText = 'Make the summary shorter';
+  const typing = seg(t, 18.0, 18.8);
+  $('ai-in').innerHTML = (t < 18.0 ? '<span style="color:#aaa">Ask for a change, e.g. make the summary shorter</span>' : type(aiText, typing) + (t < 19.1 ? '<span class="caret"></span>' : ''));
+  $('ai-in').style.borderColor = t > 18 && t < 19.1 ? '#000' : '#ddd';
+  $('ai-ap').style.background = t > 18.8 ? '#000' : '#9a9a9a';
+  $('ai-ap').style.transform = `scale(${1 - .05 * win(t, 19.0, 19.25, .12)})`;
+  const sp = seg(t, 19.2, 19.8);
+  let sum = t < 19.2 ? SUM_LONG : t < 19.8 ? SUM_LONG.slice(0, Math.round(lerp(SUM_LONG.length, 0, sp))) : type(SUM_SHORT, seg(t, 19.8, 20.2));
+  $('summary').innerHTML = `<span class="${t > 19.2 && t < 21.2 ? 'hl' : ''}">${sum}</span>`;
+  const blink = Math.floor(t * 3) % 2 === 0;
+  const skillsTyped = type(', Kafka', seg(t, 20.8, 21.6));
+  const editing = t > 20.4 && t < 22.6;
+  $('skills').innerHTML = SKILLS + (editing ? `<span style="background:${skillsTyped ? '#eef3ff' : 'transparent'}">${skillsTyped}</span><span class="caret" style="opacity:${blink || t < 21.6 ? 1 : 0}"></span>` : t >= 22.6 ? ', Kafka' : '');
+
+  // cursor
+  const [mx, my] = kf(t, CURSOR);
+  let clickAmt = 0; CLICKS.forEach(c => { clickAmt = Math.max(clickAmt, win(t, c - .05, c + .25, .1)); });
+  show($('cursor'), win(t, 2.8, 22.5, .3), `translate(${mx}px, ${my}px) scale(${1 - .15 * clickAmt})`);
+  let rp = -1; CLICKS.forEach(c => { if (t >= c && t < c + .45) rp = seg(t, c, c + .45); });
+  show($('ring'), rp < 0 ? 0 : 1 - rp, `translate(${mx - 30 + 4}px, ${my - 30 + 4}px) scale(${.3 + rp * 1.2})`);
+
+  // captions
+  let capO = 0, cur = null;
+  for (const st of STEPS) { const o = win(t, st[0], st[1], .3); if (o > capO) { capO = o; cur = st; } }
+  if (cur) { $('cap-step').textContent = cur[2] + ' of 6'; $('cap-title').textContent = cur[3]; $('cap-sub').textContent = cur[4]; }
+  const ci = cur ? out(seg(t, cur[0], cur[0] + .45)) : 1;
+  show($('capbg'), capO, '');
+  show($('caption'), capO, `translateY(${(1 - ci) * -24}px)`);
+
+  // memory card
+  show($('memo'), win(t, 22.7, 24.6, .3), '');
+  $('memo-card').style.transform = `translateY(${(1 - back(seg(t, 22.7, 23.2))) * 60}px)`;
+  [...$('chips').children].forEach((c, i) => show(c, seg(t, 23.1 + i * .18, 23.3 + i * .18), `scale(${back(seg(t, 23.1 + i * .18, 23.45 + i * .18))})`));
+
+  // pricing 24.7–28.4
+  const po = win(t, 24.7, 28.4, .3);
+  show($('price'), po, '');
+  show($('pr-h'), seg(t, 24.7, 25.1), `translateY(${(1 - out(seg(t, 24.7, 25.2))) * 40}px) scale(${lerp(1.08, 1, out(seg(t, 24.7, 25.3)))})`);
+  show($('pr-s'), seg(t, 25.1, 25.4), '');
+  show($('row-a'), seg(t, 25.4, 25.6), '');
+  show($('row-b'), seg(t, 25.6, 25.8), '');
+  $('bar-a').style.width = lerp(80, 420, out(seg(t, 25.4, 26.2))) + 'px';
+  $('bar-b').style.width = lerp(80, 1170, out(seg(t, 25.6, 26.6))) + 'px';
+  $('bar-a').style.overflow = $('bar-b').style.overflow = 'hidden';
+  show($('pr-badge'), seg(t, 26.6, 26.9), `scale(${back(seg(t, 26.6, 27.0))})`);
+  show($('pr-foot'), seg(t, 27.0, 27.3), '');
+
+  // CTA 28.3–30
+  show($('cta'), seg(t, 28.3, 28.7), `scale(${lerp(1.06, 1, out(seg(t, 28.3, 29.0)))})`);
+}
+window.render = render;
+
+// --- preview player ---
+const stage = $('stage');
+const isRender = new URLSearchParams(location.search).has('render');
+if (isRender) document.body.classList.add('render');
+function fit() {
+  const h = isRender ? innerHeight : innerHeight - 56;
+  const sc = Math.min(innerWidth / 1920, h / 1080);
+  stage.style.transform = `translate(${(innerWidth - 1920 * sc) / 2}px, ${(h - 1080 * sc) / 2}px) scale(${sc})`;
+}
+addEventListener('resize', fit); fit();
+const audio = new Audio('audio/mix.mp3'); audio.preload = 'auto';
+let playing = false, t0 = performance.now(), tc = +(new URLSearchParams(location.search).get('t') || 0);
+function frame(now) {
+  if (playing) {
+    tc = audio.paused ? (now - t0) / 1000 : audio.currentTime;   // audio is the master clock
+    if (tc >= D) { tc = 0; t0 = now; audio.currentTime = 0; }
+  }
+  render(tc); $('scrub').value = tc; $('tlabel').textContent = tc.toFixed(1) + 's / 30s';
+  if (!isRender) requestAnimationFrame(frame);
+}
+const setPlay = p => {
+  playing = p; $('play').textContent = p ? 'Pause' : 'Play (with sound)';
+  t0 = performance.now() - tc * 1000; audio.currentTime = tc;
+  if (p) audio.play().catch(() => {}); else audio.pause();
+};
+audio.addEventListener('ended', () => { if (playing) { tc = 0; setPlay(true); } });
+$('play').textContent = 'Play (with sound)';
+$('play').onclick = () => setPlay(!playing);
+$('restart').onclick = () => { tc = 0; setPlay(true); };
+$('scrub').oninput = e => { tc = +e.target.value; setPlay(false); };
+addEventListener('keydown', e => { if (e.code === 'Space') { e.preventDefault(); setPlay(!playing); } });
+if (isRender) render(tc); else document.fonts.ready.then(() => requestAnimationFrame(frame));
+</script>
+</body>
+</html>

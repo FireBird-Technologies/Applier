@@ -7,7 +7,7 @@ export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: "Blog",
-  description: "How Applier works, written plainly: tailoring, one-page resumes, credits and pricing.",
+  description: "How to tailor your resume to a job description, keep it to one page, and use AI without inventing anything. Plus how Applier works and what it costs.",
 };
 
 export default async function BlogIndex() {

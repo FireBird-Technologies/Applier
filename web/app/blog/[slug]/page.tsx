@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ButtonLink } from "@/components/Button";
+import { YouTube } from "@/components/YouTube";
 import { formatDate, getPost, getPosts } from "@/lib/posts";
 import { getPricing } from "@/lib/pricing";
 import { site } from "@/lib/site";
@@ -21,6 +22,8 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   return {
     title: post.title,
     description: post.description,
+    keywords: post.keywords,
+    alternates: { canonical: `/blog/${post.slug}` },
     openGraph: { title: post.title, description: post.description, type: "article", publishedTime: post.date },
   };
 }
@@ -40,6 +43,10 @@ export default async function PostPage({ params }: { params: Promise<Params> }) 
             <h2 key={i} className="pt-4 text-2xl font-semibold text-black" style={{ letterSpacing: "-0.03em" }}>{b.text}</h2>
           ) : b.type === "ul" ? (
             <ul key={i} className="list-disc space-y-2 pl-6">{b.items.map((it) => <li key={it}>{it}</li>)}</ul>
+          ) : b.type === "ol" ? (
+            <ol key={i} className="list-decimal space-y-2 pl-6">{b.items.map((it) => <li key={it}>{it}</li>)}</ol>
+          ) : b.type === "video" ? (
+            <YouTube key={i} className="py-4" />
           ) : (
             <p key={i}>{b.text}</p>
           ),
