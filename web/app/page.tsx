@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ButtonLink } from "@/components/Button";
@@ -12,6 +13,15 @@ import { getPricing } from "@/lib/pricing";
 import { money, site } from "@/lib/site";
 
 export const revalidate = 300; // prices come from the API; refresh them
+
+// Competitors rank #1-3 for "resume tailor" / "tailor my resume" with their homepages (DataForSEO, Nov 2026),
+// so the homepage title and description lead with those terms.
+export const metadata: Metadata = {
+  title: { absolute: "Applier: AI Resume Tailor | Tailor Your Resume to Any Job Description" },
+  description:
+    "Applier is an AI resume tailor for Chrome. Open any job post and get a one-page resume tailored to that job description in seconds, using only the facts in your own resume. Free to start, then pay per application. No subscription.",
+  alternates: { canonical: "/" },
+};
 
 const trust = [
   ["Only your facts", "Nothing invented, ever."],
