@@ -90,7 +90,10 @@ export default async function Home() {
             </div>
             <p className="mt-4 text-sm text-neutral-500">Works on any job site.</p>
           </Reveal>
-          <Reveal delay={150} className="mt-16"><HeroDemo /></Reveal>
+          <Reveal delay={150} className="mx-auto mt-16 max-w-5xl">
+            <YouTube />
+            <p className="mt-4 text-sm text-neutral-500">Watch Applier tailor a resume in 30 seconds.</p>
+          </Reveal>
         </div>
       </section>
 
@@ -106,21 +109,19 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* 30-second demo video */}
-      <section id="video" className="border-b border-neutral-200">
-        <div className="mx-auto max-w-5xl px-6 py-24 md:py-28">
+      {/* Interactive demo: pick a sample job and watch the same facts get re-aimed */}
+      <section id="try" className="border-b border-neutral-200">
+        <div className="mx-auto max-w-6xl px-6 py-24 md:py-28">
           <Reveal className="mx-auto max-w-2xl text-center">
-            <Eyebrow>Watch / 30 seconds</Eyebrow>
+            <Eyebrow>Try it / No install</Eyebrow>
             <h2 className="mt-4 text-4xl font-semibold leading-[1.08] md:text-5xl" style={{ letterSpacing: "-0.04em" }}>
               Tailor your resume to any job description.
             </h2>
             <p className="mt-5 text-lg leading-relaxed text-neutral-600">
-              Sign in, add your resume once, open a job post and generate. Then edit it with AI or by hand, like in Word.
+              Pick a job below. The same facts get reordered and reworded for each role. Nothing is invented.
             </p>
           </Reveal>
-          <Reveal delay={100} className="mt-12">
-            <YouTube />
-          </Reveal>
+          <Reveal delay={100} className="mt-12"><HeroDemo /></Reveal>
         </div>
       </section>
 
