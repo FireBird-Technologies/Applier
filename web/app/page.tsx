@@ -67,32 +67,35 @@ export default async function Home() {
 
   return (
     <>
-      {/* Hero: centered, with the product working right underneath */}
+      {/* Hero: pitch on the left, the 30-second demo video on the right (above the fold).
+          On mobile: pitch, then video, then buttons. */}
       <section className="relative overflow-hidden border-b border-neutral-200">
         <div className="dots absolute inset-0" aria-hidden />
-        <div className="relative mx-auto max-w-6xl px-6 pb-24 pt-20 text-center md:pt-28">
-          <Reveal>
-            <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3.5 py-1.5 text-[13px] text-neutral-600">
+        <div className="relative mx-auto grid max-w-6xl items-center gap-x-12 gap-y-10 px-6 pb-20 pt-14 text-center md:pt-20 lg:grid-cols-[1fr_1.25fr] lg:pb-24 lg:text-left">
+          <Reveal className="lg:col-start-1 lg:row-start-1 lg:self-end">
+            <div className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3.5 py-1.5 text-[13px] text-neutral-600">
               <span className="h-1.5 w-1.5 rounded-full bg-black" />
               {pricing.freeCredits} free resumes. No card needed.
             </div>
-            <h1 className="mx-auto mt-8 max-w-4xl text-5xl font-semibold leading-[1.02] md:text-7xl" style={{ letterSpacing: "-0.045em" }}>
+            <h1 className="mx-auto mt-7 max-w-4xl text-5xl font-semibold leading-[1.02] md:text-6xl lg:mx-0" style={{ letterSpacing: "-0.045em" }}>
               Apply to jobs
               <br />
               <span className="text-neutral-400">with a resume that fits.</span>
             </h1>
-            <p className="mx-auto mt-7 max-w-2xl text-lg leading-relaxed text-neutral-600 md:text-xl">
+            <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-neutral-600 lg:mx-0">
               Open a job posting. Applier reads it and writes a one-page resume for that exact role, using only the facts in your own resume.
             </p>
-            <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
+          </Reveal>
+          <Reveal delay={100} className="lg:col-start-2 lg:row-span-2 lg:row-start-1">
+            <YouTube />
+            <p className="mt-3 text-center text-sm text-neutral-500">Watch Applier tailor a resume in 30 seconds.</p>
+          </Reveal>
+          <Reveal delay={150} className="lg:col-start-1 lg:row-start-2 lg:self-start">
+            <div className="flex flex-wrap items-center justify-center gap-3 lg:justify-start">
               <ButtonLink href={site.installUrl} external={site.installIsExternal} className="px-6 py-3.5 text-[15px]">Add to Chrome</ButtonLink>
               <ButtonLink href="/#how-it-works" variant="ghost" className="px-6 py-3.5 text-[15px]">See how it works</ButtonLink>
             </div>
             <p className="mt-4 text-sm text-neutral-500">Works on any job site.</p>
-          </Reveal>
-          <Reveal delay={150} className="mx-auto mt-16 max-w-5xl">
-            <YouTube />
-            <p className="mt-4 text-sm text-neutral-500">Watch Applier tailor a resume in 30 seconds.</p>
           </Reveal>
         </div>
       </section>
